@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fleet Desk · Trips & Expenses</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1f4e78">
+<style>
+:root{
+  --bg:#f4f5f2;--panel:#ffffff;--ink:#1c2126;--muted:#5e6670;--line:#d9ddd6;--soft:#eceee9;
+  --accent:#1f4e78;--accent-ink:#ffffff;--warn:#b3261e;--warn-bg:#fbeceb;--ok:#1b7f5c;--ok-bg:#e5f3ed;
+  --s-plan:#6b7580;--s-prog:#1f6fc5;--s-done:#1b7f5c;--s-canc:#b3261e;--amber:#9a6a00;--amber-bg:#fdf3dc;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#15181b;--panel:#1d2125;--ink:#e7e9e6;--muted:#9aa2aa;--line:#33393f;--soft:#262b30;
+  --accent:#6aa5d8;--accent-ink:#0d1418;--warn:#f2867f;--warn-bg:#3a2321;--ok:#4cc395;--ok-bg:#1d332a;
+  --s-plan:#9aa2aa;--s-prog:#6aa5d8;--s-done:#4cc395;--s-canc:#f2867f;--amber:#e3b54a;--amber-bg:#3a3020;}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI",system-ui,-apple-system,sans-serif}
+header{padding:18px 20px 10px;max-width:1280px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+header .t{flex:1;min-width:240px}
+h1{margin:0;font-size:22px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin-top:2px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px;vertical-align:middle}
+.dot.on{background:var(--ok)}.dot.off{background:var(--warn)}
+main{max-width:1280px;margin:0 auto;padding:0 20px 40px}
+.banner{background:var(--amber-bg);color:var(--amber);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:6px 0 10px;font-size:13px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:14px 0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;border-top:4px solid var(--c,var(--accent))}
+.card .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.card .v{font-size:24px;font-weight:650;font-variant-numeric:tabular-nums}
+.card .s{font-size:12px;color:var(--muted)}
+.find{display:flex;gap:8px;margin:6px 0 14px}
+.find input{flex:1;font-size:16px;padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink)}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;overflow-x:auto}
+nav button{border:0;background:none;color:var(--muted);font:inherit;font-weight:600;padding:9px 14px;border-bottom:3px solid transparent;cursor:pointer;white-space:nowrap}
+nav button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent)}
+.f{display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:10px}
+.f label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.f input,.f select{font:inherit;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);min-width:120px}
+.btn{font:inherit;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--ink);cursor:pointer;white-space:nowrap}
+.btn.p{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.d{color:var(--warn);border-color:var(--warn)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.sum{font-size:13px;color:var(--muted);margin:4px 0 8px}
+.sum b{color:var(--ink)}
+.tw{overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:10px;max-height:68vh}
+.tw.short{max-height:none}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:7px 10px;border-bottom:1px solid var(--soft);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--soft);font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);cursor:pointer;user-select:none;z-index:1}
+th[data-dir]::after{content:attr(data-dir);margin-left:4px}
+th.n,td.n{text-align:right}
+tbody tr.click{cursor:pointer}
+tbody tr:hover{background:var(--soft)}
+tfoot td{font-weight:700;background:var(--soft);position:sticky;bottom:0}
+td.cn{font-family:Consolas,"Cascadia Mono",monospace;font-weight:600}
+td.wrap{white-space:normal;min-width:180px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff;background:var(--c)}
+.over{color:var(--warn);font-weight:650}.under{color:var(--ok);font-weight:650}.mut{color:var(--muted)}
+.tag{font-size:11px;color:var(--warn);background:var(--warn-bg);padding:1px 6px;border-radius:6px;margin-left:6px}
+a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
+.empty{padding:28px;text-align:center;color:var(--muted)}
+.hit{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;overflow:auto}
+.hit h3{margin:0 0 6px;font-size:15px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:12px;overflow:auto}
+.box h3{margin:0 0 8px;font-size:14px}
+.barrow{display:grid;grid-template-columns:170px 1fr 110px;gap:10px;align-items:center;margin:6px 0;font-size:13px}
+.bar{height:10px;background:var(--soft);border-radius:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent)}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 18px;max-width:820px}
+.note code{background:var(--soft);padding:1px 5px;border-radius:5px}
+/* modal */
+.mod{position:fixed;inset:0;background:rgba(10,15,20,.5);display:none;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 10px;z-index:20}
+.mod.show{display:flex}
+.sheet{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;width:100%;max-width:760px;padding:18px 20px}
+.sheet h2{margin:0 0 4px;font-size:18px}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.g .w2{grid-column:span 2}.g .w3{grid-column:1/-1}
+.g label{display:flex;flex-direction:column;font-size:12px;color:var(--muted);gap:3px}
+.g input,.g select,.g textarea{font:inherit;padding:8px 9px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink)}
+.sect{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);margin:16px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.ct{width:100%}
+.ct td,.ct th{padding:5px 6px;border:0}
+.ct th{position:static;background:none;cursor:default}
+.ct input{width:100%;font:inherit;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);text-align:right;font-variant-numeric:tabular-nums}
+.ct tr.tot td{border-top:1px solid var(--line);font-weight:700}
+.foot{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;align-items:center}
+.foot .sp{flex:1}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:9px;font-size:13px;display:none;z-index:40}
+.toast.show{display:block}
+[hidden]{display:none!important}
+@media print{nav,.find,.f,header .btn,#banner,.mod,.toast{display:none!important}.tw{max-height:none;border:0}th{position:static}tfoot td{position:static}}
+@media (max-width:720px){.two{grid-template-columns:1fr}.g{grid-template-columns:1fr 1fr}.barrow{grid-template-columns:110px 1fr 90px}}
+@media (max-width:600px){header,main{padding-left:14px;padding-right:14px}.card .v{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="t">
+    <h1>Fleet Desk · Trips &amp; Expenses</h1>
+    <div class="sub" id="upd"><span class="dot"></span>Connecting to saved records…</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn p" data-new>＋ Plan a trip</button>
+    <button class="btn" id="hdrRoute">＋ Route</button>
+    <button class="btn" id="syncBtn" title="Sync now">⟳ Sync</button>
+    <button class="btn" id="setBtn" title="Settings">⚙ Settings</button>
+  </div>
+</header>
+<main>
+  <div id="banner" class="banner" hidden></div>
+  <div class="f" style="margin:4px 0 0"><label>Period<input type="month" id="per"></label><label>&nbsp;<button class="btn" id="perAll">All time</button></label></div>
+  <div class="cards" id="cards"></div>
+  <div class="find"><input id="q" type="search" placeholder="Find anything: truck, driver, phone, container, booking, route or assistant…" autocomplete="off"></div>
+  <nav role="tablist">
+    <button role="tab" data-t="find" aria-selected="true">Find</button>
+    <button role="tab" data-t="trips" aria-selected="false">Trips</button>
+    <button role="tab" data-t="exp" aria-selected="false">Expenses</button>
+    <button role="tab" data-t="ana" aria-selected="false">Analysis</button>
+    <button role="tab" data-t="fleet" aria-selected="false">Trucks &amp; drivers</button>
+    <button role="tab" data-t="routes" aria-selected="false">Routes &amp; rates</button>
+    <button role="tab" data-t="how" aria-selected="false">How it works</button>
+  </nav>
+
+  <section id="t-find"><div id="findOut" class="empty">Type a truck number, container, booking, route, driver or assistant above.</div></section>
+
+  <section id="t-trips" hidden>
+    <div class="f">
+      <label>Status<select id="tSt"><option value="">All</option><option>Planned</option><option>In progress</option><option>Completed</option><option>Cancelled</option></select></label>
+      <label>Route<select id="tRt"><option value="">All routes</option></select></label>
+      <label>Truck<select id="tTk"><option value="">All trucks</option></select></label>
+      <label>From<input type="date" id="tFrom"></label>
+      <label>To<input type="date" id="tTo"></label>
+      <label>Flag<select id="tFl"><option value="">Any</option><option value="over">Over plan</option><option value="noact">Completed, no actuals</option></select></label>
+      <label>Text<input id="tTx" placeholder="container, booking…"></label>
+      <button class="btn" id="tClr">Clear</button>
+      <button class="btn p" id="tCsv">Export CSV</button>
+      <button class="btn" onclick="print()">Print</button>
+    </div>
+    <div class="sum" id="tSum"></div>
+    <div class="tw"><table id="tTab"></table></div>
+  </section>
+
+  <section id="t-exp" hidden>
+    <div class="f">
+      <label>Expense type<select id="eTy"><option value="">All types</option></select></label>
+      <label>Truck<select id="eTk"><option value="">All trucks</option></select></label>
+      <label>Text<input id="eTx" placeholder="truck, route, note…"></label>
+      <button class="btn p" id="eCsv">Export CSV</button>
+      <button class="btn" onclick="print()">Print</button>
+    </div>
+    <div class="sum" id="eSum"></div>
+    <div class="tw"><table id="eTab"></table></div>
+  </section>
+
+  <section id="t-ana" hidden>
+    <div class="two">
+      <div class="box"><h3>Spend by expense type <span class="mut" style="font-weight:400">· completed trips in period</span></h3><div id="aType"></div></div>
+      <div class="box"><h3>Plan accuracy by route <span class="mut" style="font-weight:400">· completed trips</span></h3><div class="tw short"><table id="aRoute"></table></div></div>
+    </div>
+    <div class="box"><h3>By truck</h3><div class="tw short"><table id="aTruck"></table></div></div>
+    <div class="box"><h3>Monthly trend <span class="mut" style="font-weight:400">· last 6 months, all trips not cancelled</span></h3><div class="tw short"><table id="aMonth"></table></div></div>
+  </section>
+
+  <section id="t-fleet" hidden>
+    <div class="f"><button class="btn p" id="kNew">＋ Add truck</button><span class="sum" style="margin:0 0 0 6px" id="kInfo"></span></div>
+    <div class="tw"><table id="kTab"></table></div>
+  </section>
+
+  <section id="t-routes" hidden>
+    <div class="f"><button class="btn p" id="rNew">＋ Add route</button><span class="sum" style="margin:0 0 0 6px">The rate card. A new trip on a route copies these figures as its planned cost. Click a row to edit.</span></div>
+    <div class="tw"><table id="rTab"></table></div>
+  </section>
+
+  <section id="t-how" hidden>
+    <div class="note">
+      <p><b>Where records are kept:</b> in the <b>Fleet Desk Records</b> Google Sheet in your Google Drive, with a copy on each device. Changes you make with no signal wait on the device and are sent when the internet returns. The dot by the title is green when everything is synced. Use <b>⟳ Sync</b> to pull the latest from your other device.</p>
+      <p><b>First time on a phone or PC:</b> open ⚙ Settings, paste the Google script address and your PIN, and tap Save &amp; connect. On a phone, use the browser menu → <i>Add to Home screen</i> to get an app icon.</p>
+      <p><b>Routine</b></p>
+      <ol>
+        <li><b>Trucks &amp; drivers</b> — register each truck assigned to you with its driver and phone. Picking the truck on a trip fills in the driver.</li>
+        <li><b>Routes &amp; rates</b> — set each regular route once with its usual levies, tolls, gate fees and assistant pay.</li>
+        <li><b>Plan a trip</b> — pick the date, route, truck, container and booking. The planned costs fill in from the rate card, and you can adjust them for this trip.</li>
+        <li>Set the status to <b>In progress</b> when the truck leaves.</li>
+        <li>After the trip, open it, enter what was actually paid in the <b>Actual</b> column, and set it to <b>Completed</b>.</li>
+      </ol>
+      <p><b>Reading it:</b> Over / (under) is actual minus planned. Red means the trip cost more than planned. The <i>Completed, no actuals</i> flag on the Trips tab lists finished trips whose expenses are still missing.</p>
+      <p>The trucks and drivers are leased, so their hire is not tracked here. Expenses tracked: levies (union / park), tolls, gate fees (terminal / port), assistant pay, and other.</p>
+      <p>Export CSV opens in Excel. You can also open the Google Sheet directly to see every trip as a row. Don’t edit it there while the desk is syncing.</p>
+    </div>
+  </section>
+</main>
+
+<!-- trip modal -->
+<div class="mod" id="mTrip"><div class="sheet">
+  <h2 id="mtTitle">Plan a trip</h2><div class="sub" id="mtSub"></div>
+  <div class="sect">Trip</div>
+  <div class="g">
+    <label>Date<input type="date" id="f_date"></label>
+    <label>Status<select id="f_status"><option>Planned</option><option>In progress</option><option>Completed</option><option>Cancelled</option></select></label>
+    <label>Truck No.<input id="f_truck" list="dlTruck" placeholder="LSR 123 XA"></label>
+    <label class="w3">Route<select id="f_route"></select></label>
+    <label>Container No.<input id="f_container" placeholder="MSCU1234567"></label>
+    <label>Size<select id="f_size"><option value="">—</option><option>20'</option><option>40'</option><option>Loose / no container</option></select></label>
+    <label>Client / Booking ref<input id="f_booking"></label>
+    <label>Driver (leasing co.)<input id="f_driver" list="dlDriver"></label>
+    <label>Driver phone<input id="f_phone" inputmode="tel"></label>
+    <label>Assistant<input id="f_assistant" list="dlAsst"></label>
+  </div>
+  <div class="sect">Expenses (₦)</div>
+  <table class="ct" id="costT"></table>
+  <div class="g" style="margin-top:8px">
+    <label class="w3">Other expense — what was it?<input id="f_otherDesc"></label>
+    <label class="w3">Notes<textarea id="f_notes" rows="2"></textarea></label>
+  </div>
+  <div class="foot"><button class="btn p" id="ftSave">Save trip</button><button class="btn" data-close>Cancel</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
+</div></div>
+
+<!-- truck modal -->
+<div class="mod" id="mTruck"><div class="sheet" style="max-width:560px">
+  <h2 id="mkTitle">Add truck</h2><div class="sub">Leased truck and the driver supplied with it.</div>
+  <div class="g" style="margin-top:12px">
+    <label>Truck No. (plate)<input id="k_truck" placeholder="FTA345XC"></label>
+    <label class="w2">Driver<input id="k_driver"></label>
+    <label>Driver phone<input id="k_phone" inputmode="tel"></label>
+    <label>Status<select id="k_status"><option>Active</option><option>Off / under repair</option><option>Returned to lessor</option></select></label>
+    <label>Leasing company<input id="k_lessor"></label>
+    <label class="w3">Notes<textarea id="k_notes" rows="2"></textarea></label>
+  </div>
+  <div class="foot"><button class="btn p" id="fkSave">Save truck</button><button class="btn" data-close>Cancel</button><span class="sp"></span><button class="btn d" id="fkDel" hidden>Delete</button></div>
+</div></div>
+
+<!-- route modal -->
+<div class="mod" id="mRoute"><div class="sheet" style="max-width:620px">
+  <h2 id="mrTitle">Add route</h2>
+  <div class="g">
+    <label class="w3">Route name<input id="r_name" placeholder="Apapa Port → Ikeja warehouse"></label>
+    <label>From<input id="r_from"></label>
+    <label>To<input id="r_to"></label>
+    <label>Distance (km)<input id="r_km" inputmode="decimal"></label>
+  </div>
+  <div class="sect">Usual cost per trip (₦)</div>
+  <div class="g" id="rCost"></div>
+  <div class="g" style="margin-top:8px"><label class="w3">Notes<textarea id="r_notes" rows="2"></textarea></label></div>
+  <div class="foot"><button class="btn p" id="frSave">Save route</button><button class="btn" data-close>Cancel</button><span class="sp"></span><button class="btn d" id="frDel" hidden>Delete</button></div>
+</div></div>
+
+<!-- settings -->
+<div class="mod" id="mSet"><div class="sheet" style="max-width:560px">
+  <h2>Settings · connection</h2><div class="sub">Enter these once on each phone or PC. They stay saved on that device.</div>
+  <div class="g" style="margin-top:12px">
+    <label class="w3">Google script web-app address<input id="s_url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off"></label>
+    <label class="w3">PIN<input id="s_pin" type="password" autocomplete="off"></label>
+  </div>
+  <div class="sub" id="s_msg" style="margin-top:8px"></div>
+  <div class="foot"><button class="btn p" id="sSave">Save &amp; connect</button><button class="btn" id="sTest">Test</button><button class="btn" data-close>Close</button><span class="sp"></span><button class="btn d" id="sForget">Forget on this device</button></div>
+</div></div>
+
+<!-- confirm -->
+<div class="mod" id="mConf"><div class="sheet" style="max-width:400px">
+  <h2 id="cfMsg">Delete?</h2><div class="sub">This cannot be undone.</div>
+  <div class="foot"><button class="btn d" id="cfYes">Delete</button><button class="btn" data-close>Cancel</button></div>
+</div></div>
+
+<datalist id="dlTruck"></datalist><datalist id="dlDriver"></datalist><datalist id="dlAsst"></datalist>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const COSTS=[["levies","Levies (union / park)"],["tolls","Tolls"],["gate","Gate fees (terminal / port)"],["assistant","Assistant pay"],["other","Other"]];
+const RC=COSTS.filter(c=>c[0]!=="other");
+const SC={"Planned":"var(--s-plan)","In progress":"var(--s-prog)","Completed":"var(--s-done)","Cancelled":"var(--s-canc)"};
+const S={db:true,trucks:[],eTruck:null,routes:[],trips:[],canWrite:true,live:false,loaded:0,eTrip:null,eRoute:null};
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+const num=v=>{if(v===''||v==null)return null;const n=Number(String(v).replace(/[,₦\s]/g,''));return isFinite(n)?n:null};
+const N=n=>n==null||n===''?'':(n<0?'-':'')+'₦'+Math.abs(Math.round(n)).toLocaleString('en-NG');
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const TODAY=iso(new Date());
+const fmt=d=>d&&/^\d{4}-\d\d-\d\d$/.test(d)?d.slice(8,10)+'/'+d.slice(5,7)+'/'+d.slice(0,4):(d||'');
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mlabel=m=>m?MN[+m.slice(5,7)-1]+' '+m.slice(0,4):'All time';
+const sumKeys=(o,keys)=>{if(!o)return null;let t=0,a=false;keys.forEach(k=>{if(typeof o[k]==='number'){t+=o[k];a=true}});return a?t:null};
+const KEYS=COSTS.map(c=>c[0]);
+const P=t=>sumKeys(t.planned,KEYS),A=t=>sumKeys(t.actual,KEYS);
+const V=t=>{const a=A(t),p=P(t);return a==null||p==null?null:a-p};
+const pill=s=>`<span class="pill" style="--c:${SC[s]||'var(--accent)'}">${esc(s||'Planned')}</span>`;
+const vcell=v=>v==null?'':`<span class="${v>0?'over':v<0?'under':''}">${v>0?'+':''}${N(v)}</span>`;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t.h);t.h=setTimeout(()=>t.classList.remove('show'),2600)}
+function banner(m){$('banner').textContent=m||'';$('banner').hidden=!m}
+function status(txt,cls){$('upd').innerHTML=`<span class="dot ${cls||''}"></span>${txt}`}
+
+/* ---- period & tabs ---- */
+$('per').value=TODAY.slice(0,7);
+$('perAll').onclick=()=>{$('per').value='';renderAll()};
+$('per').onchange=renderAll;
+const inPer=t=>{const m=$('per').value;return !m||(t.date||'').startsWith(m)};
+const tabs=[...document.querySelectorAll('nav button')];
+function show(t){tabs.forEach(b=>b.setAttribute('aria-selected',b.dataset.t===t));['find','trips','exp','ana','fleet','routes','how'].forEach(x=>$('t-'+x).hidden=x!==t);try{localStorage.setItem('fd-tab',t)}catch(e){}}
+tabs.forEach(b=>b.onclick=()=>show(b.dataset.t));
+
+/* ---- sortable table helper (Records Desk style) ---- */
+function table(el,cols,rows,st,opts={}){
+  const s=st.sort;
+  if(s){const c=cols.find(c=>c.k===s.k);if(c)rows=[...rows].sort((a,b)=>{let x=c.v?c.v(a):a[c.k],y=c.v?c.v(b):b[c.k];if(typeof x==='number'||typeof y==='number'){x=x==null?-Infinity:+x;y=y==null?-Infinity:+y}else{x=String(x??'');y=String(y??'')}return(x<y?-1:x>y?1:0)*s.d})}
+  let h='<thead><tr>'+cols.map(c=>`<th data-k="${c.k}" class="${c.n?'n':''}"${s&&s.k===c.k?` data-dir="${s.d>0?'▲':'▼'}"`:''}>${c.h}</th>`).join('')+'</tr></thead><tbody>';
+  h+=rows.length?rows.map(r=>`<tr${opts.click?` class="click" data-id="${esc(opts.id(r))}"`:''}>`+cols.map(c=>`<td class="${(c.n?'n ':'')+(c.cls||'')}">${c.f?c.f(r):esc(r[c.k])}</td>`).join('')+'</tr>').join(''):`<tr><td colspan="${cols.length}" class="empty">${opts.empty||'Nothing matches these filters.'}</td></tr>`;
+  h+='</tbody>';
+  if(opts.foot&&rows.length)h+='<tfoot><tr>'+cols.map(c=>`<td class="${c.n?'n':''}">${opts.foot(c,rows)??''}</td>`).join('')+'</tr></tfoot>';
+  el.innerHTML=h;
+  el.querySelectorAll('th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;st.sort={k,d:st.sort&&st.sort.k===k?-st.sort.d:(cols.find(c=>c.k===k).n?-1:1)};st.render()});
+  if(opts.click)el.querySelectorAll('tr.click').forEach(tr=>tr.onclick=()=>opts.click(tr.dataset.id));
+  return rows;
+}
+const sumCol=(rows,f)=>rows.reduce((a,r)=>a+(f(r)||0),0);
+async function saveCsv(name,cols,rows){
+  const q=v=>{v=String(v??'');return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  const txt='﻿'+[cols.map(c=>q(c.h)).join(','),...rows.map(r=>cols.map(c=>q(c.x?c.x(r):(c.v?c.v(r):r[c.k]))).join(','))].join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/csv'}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+}
+const opts=(sel,vals,first)=>{const cur=sel.value;sel.innerHTML=`<option value="">${first}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');if(vals.includes(cur))sel.value=cur};
+
+/* ---- cards ---- */
+function renderCards(){
+  const ts=S.trips.filter(inPer).filter(t=>t.status!=='Cancelled'),done=ts.filter(t=>t.status==='Completed');
+  const act=sumCol(ts,A),pl=sumCol(done,P),ac=sumCol(done,A),v=ac-pl;
+  const noact=done.filter(t=>A(t)==null).length;
+  const prog=ts.filter(t=>t.status==='In progress').length,plan=ts.filter(t=>t.status==='Planned').length;
+  const avg=done.length?ac/done.length:null;
+  const over=done.filter(t=>(V(t)||0)>0).length;
+  const lbl=mlabel($('per').value);
+  $('cards').innerHTML=
+  `<div class="card"><div class="k">Trips · ${lbl}</div><div class="v">${ts.length}</div><div class="s">${done.length} completed · ${prog} on the road · ${plan} planned</div></div>`+
+  `<div class="card" style="--c:var(--s-prog)"><div class="k">Spent · ${lbl}</div><div class="v">${N(act)||'₦0'}</div><div class="s">actual paid on all trips</div></div>`+
+  `<div class="card" style="--c:${v>0?'var(--warn)':'var(--ok)'}"><div class="k">Over / (under) plan</div><div class="v ${v>0?'over':v<0?'under':''}">${v>0?'+':''}${N(v)||'₦0'}</div><div class="s">completed: planned ${N(pl)||'₦0'} · actual ${N(ac)||'₦0'} · ${over} over</div></div>`+
+  `<div class="card" style="--c:var(--s-prog)"><div class="k">Fleet</div><div class="v">${S.trucks.filter(k=>k.status==='Active'||!k.status).length} <span style="font-size:14px;font-weight:500">active trucks</span></div><div class="s">${new Set(S.trips.filter(t=>t.status==='In progress').map(t=>plate(t.truck))).size} on the road now · ${S.trucks.length} registered</div></div>`+
+  `<div class="card" style="--c:var(--s-plan)"><div class="k">Average per trip</div><div class="v">${avg==null?'—':N(avg)}</div><div class="s">completed trips with costs</div></div>`+
+  `<div class="card" style="--c:${noact?'var(--amber)':'var(--ok)'}"><div class="k">Missing actuals</div><div class="v">${noact}</div><div class="s">${noact?'<a class="link" id="goNoact">completed trips with no expenses entered</a>':'all completed trips have expenses'}</div></div>`;
+  const g=$('goNoact');if(g)g.onclick=()=>{clrTrips();$('tFl').value='noact';TS.render();show('trips')};
+}
+
+/* ---- trips ---- */
+const tripCols=[
+  {k:'date',h:'Date',f:t=>fmt(t.date),x:t=>fmt(t.date)},
+  {k:'status',h:'Status',f:t=>pill(t.status)},
+  {k:'routeName',h:'Route',cls:'wrap'},
+  {k:'truck',h:'Truck',cls:'cn'},
+  {k:'container',h:'Container',cls:'cn'},
+  {k:'booking',h:'Booking / client'},
+  {k:'driver',h:'Driver'},
+  {k:'assistant',h:'Assistant'},
+  {k:'p',h:'Planned',n:1,v:P,f:t=>N(P(t))},
+  {k:'a',h:'Actual',n:1,v:A,f:t=>A(t)==null&&t.status==='Completed'?'<span class="tag">missing</span>':N(A(t))},
+  {k:'d',h:'Over / (under)',n:1,v:V,f:t=>vcell(V(t))}];
+const TS={sort:{k:'date',d:-1},rows:[]};
+TS.render=function(){
+  const st=$('tSt').value,rt=$('tRt').value,tk=$('tTk').value,fr=$('tFrom').value,to=$('tTo').value,fl=$('tFl').value,x=$('tTx').value.trim().toUpperCase();
+  const useDates=fr||to;
+  let rows=S.trips.filter(t=>(useDates?((!fr||t.date>=fr)&&(!to||t.date<=to)):inPer(t))&&(!st||t.status===st)&&(!rt||t.routeName===rt)&&(!tk||t.truck===tk)&&
+    (!fl||(fl==='over'?(V(t)||0)>0:(t.status==='Completed'&&A(t)==null)))&&(!x||[t.container,t.booking,t.truck,t.routeName,t.driver,t.assistant,t.notes].join(' ').toUpperCase().includes(x)));
+  TS.rows=table($('tTab'),tripCols,rows,TS,{click:id=>openTrip(S.trips.find(t=>t.id===id)),id:t=>t.id,empty:S.loaded<2&&!S.trips.length?'Loading trips…':'No trips here. Use ＋ Plan a trip to add one.',
+    foot:(c,r)=>c.k==='date'?'Total':c.k==='p'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),P)):c.k==='a'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),A)):c.k==='d'?vcell(sumCol(r.filter(t=>t.status==='Completed'),V)):''});
+  const live=rows.filter(t=>t.status!=='Cancelled');
+  $('tSum').innerHTML=`<b>${rows.length}</b> trips${useDates?'':' · '+mlabel($('per').value)} · planned <b>${N(sumCol(live,P))||'₦0'}</b> · actual <b>${N(sumCol(live,A))||'₦0'}</b> · click a row to open it · click a heading to sort`;
+};
+function clrTrips(){['tSt','tRt','tTk','tFrom','tTo','tFl','tTx'].forEach(id=>$(id).value='')}
+['tSt','tRt','tTk','tFrom','tTo','tFl'].forEach(id=>$(id).onchange=TS.render);$('tTx').oninput=TS.render;
+$('tClr').onclick=()=>{clrTrips();TS.render()};
+$('tCsv').onclick=()=>{const cols=[...tripCols.slice(0,8),{k:'size',h:'Size'},...COSTS.map(([k,l])=>({k:'p_'+k,h:'Planned '+l,x:t=>t.planned?.[k]??''})),{k:'p',h:'Planned total',x:t=>P(t)??''},
+  ...COSTS.map(([k,l])=>({k:'a_'+k,h:'Actual '+l,x:t=>t.actual?.[k]??''})),{k:'a',h:'Actual total',x:t=>A(t)??''},{k:'d',h:'Over / (under)',x:t=>V(t)??''},{k:'otherDesc',h:'Other expense'},{k:'notes',h:'Notes'}];
+  saveCsv('fleet_trips_'+($('per').value||'all')+'.csv',cols.map(c=>c.k==='status'?{...c,x:t=>t.status}:c),TS.rows)};
+
+/* ---- expenses (one line per expense) ---- */
+function expLines(){const out=[];S.trips.filter(inPer).filter(t=>t.status!=='Cancelled').forEach(t=>COSTS.forEach(([k,l])=>{const a=t.actual?.[k],p=t.planned?.[k];if(a==null&&p==null)return;
+  out.push({id:t.id,date:t.date,truck:t.truck,routeName:t.routeName,status:t.status,type:l,p:p??null,a:a??null,d:a!=null&&p!=null?a-p:null,note:k==='other'?t.otherDesc:''})}));return out}
+const expCols=[{k:'date',h:'Date',f:r=>fmt(r.date),x:r=>fmt(r.date)},{k:'truck',h:'Truck',cls:'cn'},{k:'routeName',h:'Route',cls:'wrap'},{k:'type',h:'Expense'},
+  {k:'p',h:'Planned',n:1,f:r=>N(r.p)},{k:'a',h:'Actual',n:1,f:r=>N(r.a)},{k:'d',h:'Over / (under)',n:1,f:r=>vcell(r.d)},{k:'note',h:'Note',cls:'wrap'},{k:'status',h:'Trip status',f:r=>pill(r.status),x:r=>r.status}];
+const ES={sort:{k:'date',d:-1},rows:[]};
+ES.render=function(){const ty=$('eTy').value,tk=$('eTk').value,x=$('eTx').value.trim().toUpperCase();
+  const rows=expLines().filter(r=>(!ty||r.type===ty)&&(!tk||r.truck===tk)&&(!x||[r.truck,r.routeName,r.note,r.type].join(' ').toUpperCase().includes(x)));
+  ES.rows=table($('eTab'),expCols,rows,ES,{click:id=>openTrip(S.trips.find(t=>t.id===id)),id:r=>r.id,empty:'No expenses in this period.',
+    foot:(c,r)=>c.k==='date'?'Total':c.k==='p'?N(sumCol(r,x=>x.p)):c.k==='a'?N(sumCol(r,x=>x.a)):c.k==='d'?vcell(sumCol(r,x=>x.d)):''});
+  $('eSum').innerHTML=`<b>${rows.length}</b> expense lines · ${mlabel($('per').value)} · actual <b>${N(sumCol(rows,r=>r.a))||'₦0'}</b> · click a line to open its trip`};
+opts($('eTy'),COSTS.map(c=>c[1]),'All types');
+['eTy','eTk'].forEach(id=>$(id).onchange=ES.render);$('eTx').oninput=ES.render;
+$('eCsv').onclick=()=>saveCsv('fleet_expenses_'+($('per').value||'all')+'.csv',expCols,ES.rows);
+
+/* ---- analysis ---- */
+const AR={sort:{k:'n',d:-1}},AT={sort:{k:'a',d:-1}},AM={sort:{k:'m',d:-1}};
+function renderAna(){
+  const done=S.trips.filter(inPer).filter(t=>t.status==='Completed');
+  const ty=COSTS.map(([k,l])=>[l,sumCol(done,t=>t.actual?.[k])]);const tot=ty.reduce((a,b)=>a+b[1],0),mx=Math.max(1,...ty.map(b=>b[1]));
+  $('aType').innerHTML=tot?ty.map(([l,v])=>`<div class="barrow"><span>${l}</span><div class="bar"><i style="width:${v/mx*100}%"></i></div><span style="text-align:right;font-variant-numeric:tabular-nums">${N(v)||'₦0'} <span class="mut">${Math.round(v/tot*100)}%</span></span></div>`).join('')+`<div class="sum" style="margin-top:8px">Total <b>${N(tot)}</b> across <b>${done.length}</b> completed trips</div>`:'<div class="empty">No completed trips with expenses in this period.</div>';
+  const rm={};done.forEach(t=>{const k=t.routeName||'(no route)';const o=rm[k]||(rm[k]={r:k,n:0,p:0,a:0});o.n++;o.p+=P(t)||0;o.a+=A(t)||0});
+  const rr=Object.values(rm).map(o=>({...o,avg:o.a/o.n,d:o.a-o.p,pct:o.p?(o.a-o.p)/o.p*100:null}));
+  AR.render=()=>table($('aRoute'),[{k:'r',h:'Route',cls:'wrap'},{k:'n',h:'Trips',n:1},{k:'avg',h:'Avg actual',n:1,f:o=>N(o.avg)},{k:'d',h:'Over / (under)',n:1,f:o=>vcell(o.d)},{k:'pct',h:'%',n:1,f:o=>o.pct==null?'':`<span class="${o.pct>0?'over':o.pct<0?'under':''}">${o.pct>0?'+':''}${o.pct.toFixed(0)}%</span>`}],rr,AR,{empty:'No completed trips.'});AR.render();
+  const tm={};S.trips.filter(inPer).filter(t=>t.status!=='Cancelled').forEach(t=>{const k=t.truck||'(no truck)';const o=tm[k]||(tm[k]={t:k,n:0,c:0,a:0,last:''});o.n++;if(t.status==='Completed')o.c++;o.a+=A(t)||0;if((t.date||'')>o.last)o.last=t.date});
+  const tr=Object.values(tm).map(o=>({...o,avg:o.c?o.a/o.c:null}));
+  AT.render=()=>table($('aTruck'),[{k:'t',h:'Truck',cls:'cn'},{k:'n',h:'Trips',n:1},{k:'c',h:'Completed',n:1},{k:'a',h:'Actual spend',n:1,f:o=>N(o.a)},{k:'avg',h:'Avg per completed trip',n:1,f:o=>N(o.avg)},{k:'last',h:'Last trip',f:o=>fmt(o.last)}],tr,AT,{empty:'No trips in this period.',
+    foot:(c,r)=>c.k==='t'?'Total':c.k==='n'?sumCol(r,o=>o.n):c.k==='c'?sumCol(r,o=>o.c):c.k==='a'?N(sumCol(r,o=>o.a)):''});AT.render();
+  const months=[];const d=new Date();for(let i=0;i<6;i++){const x=new Date(d.getFullYear(),d.getMonth()-i,1);months.push(iso(x).slice(0,7))}
+  const mr=months.map(m=>{const ts=S.trips.filter(t=>(t.date||'').startsWith(m)&&t.status!=='Cancelled'),dn=ts.filter(t=>t.status==='Completed');const p=sumCol(dn,P),a=sumCol(dn,A);
+    return {m,n:ts.length,c:dn.length,spent:sumCol(ts,A),p,a,d:a-p,avg:dn.length?a/dn.length:null}});
+  AM.render=()=>table($('aMonth'),[{k:'m',h:'Month',f:o=>mlabel(o.m),x:o=>mlabel(o.m)},{k:'n',h:'Trips',n:1},{k:'c',h:'Completed',n:1},{k:'spent',h:'Spent',n:1,f:o=>N(o.spent)},{k:'d',h:'Over / (under)',n:1,f:o=>o.c?vcell(o.d):''},{k:'avg',h:'Avg per trip',n:1,f:o=>N(o.avg)}],mr,AM);AM.render();
+}
+
+/* ---- routes ---- */
+const routeCols=[{k:'name',h:'Route',cls:'wrap'},{k:'from',h:'From'},{k:'to',h:'To'},{k:'km',h:'km',n:1},
+  ...RC.map(([k,l])=>({k:'c_'+k,h:l.split(' (')[0],n:1,v:r=>r.costs?.[k],f:r=>N(r.costs?.[k])})),
+  {k:'tot',h:'Planned per trip',n:1,v:r=>sumKeys(r.costs,RC.map(c=>c[0])),f:r=>`<b>${N(sumKeys(r.costs,RC.map(c=>c[0])))}</b>`},
+  {k:'used',h:'Trips',n:1,v:r=>S.trips.filter(t=>t.routeId===r.id).length}];
+const RS={sort:{k:'name',d:1}};
+RS.render=()=>table($('rTab'),routeCols,S.routes,RS,{click:id=>openRoute(S.routes.find(r=>r.id===id)),id:r=>r.id,empty:S.loaded<2&&!S.routes.length?'Loading routes…':'No routes yet. Add your regular routes with their usual levies, tolls, gate fees and assistant pay.'});
+
+/* ---- trucks & drivers ---- */
+const plate=x=>String(x||'').toUpperCase().replace(/\s+/g,'');
+const KS={sort:{k:'truck',d:1}};
+function truckStats(k){const p=plate(k.truck);const ts=S.trips.filter(t=>plate(t.truck)===p&&t.status!=='Cancelled');
+  return {n:ts.length,inper:ts.filter(inPer).length,spent:sumCol(ts.filter(inPer),A),last:ts.map(t=>t.date).sort().pop()||'',road:ts.some(t=>t.status==='In progress')}}
+const KSC={'Active':'var(--s-done)','Off / under repair':'var(--amber)','Returned to lessor':'var(--s-plan)'};
+KS.render=()=>{const rows=S.trucks.map(k=>({...k,...truckStats(k)}));
+  table($('kTab'),[{k:'truck',h:'Truck',cls:'cn'},{k:'driver',h:'Driver'},{k:'phone',h:'Phone',f:k=>k.phone?`<a class="link" href="tel:${esc(k.phone)}">${esc(k.phone)}</a>`:''},
+    {k:'status',h:'Status',f:k=>`<span class="pill" style="--c:${KSC[k.status||'Active']||'var(--accent)'}">${esc(k.status||'Active')}</span>${k.road?'<span class="tag" style="color:var(--s-prog);background:var(--soft)">on the road</span>':''}`},
+    {k:'inper',h:'Trips · period',n:1},{k:'spent',h:'Spent · period',n:1,f:k=>N(k.spent)},{k:'n',h:'Trips · all time',n:1},{k:'last',h:'Last trip',f:k=>fmt(k.last)},{k:'lessor',h:'Leasing co.'},{k:'notes',h:'Notes',cls:'wrap'}],
+    rows,KS,{click:id=>openTruck(S.trucks.find(k=>k.id===id)),id:k=>k.id,empty:'No trucks yet. Add the trucks assigned to you with their drivers.',
+    foot:(c,r)=>c.k==='truck'?'Total':c.k==='inper'?sumCol(r,x=>x.inper):c.k==='spent'?N(sumCol(r,x=>x.spent)):c.k==='n'?sumCol(r,x=>x.n):''});
+  $('kInfo').textContent=`${S.trucks.length} truck${S.trucks.length===1?'':'s'} registered · click a row to edit · period: ${mlabel($('per').value)}`};
+$('kNew').onclick=()=>openTruck(null);
+function openTruck(k){S.eTruck=k||null;$('mkTitle').textContent=k?'Truck '+k.truck:'Add truck';
+  $('k_truck').value=k?.truck||'';$('k_driver').value=k?.driver||'';$('k_phone').value=k?.phone||'';$('k_status').value=k?.status||'Active';$('k_lessor').value=k?.lessor||'';$('k_notes').value=k?.notes||'';
+  $('fkDel').hidden=!k;$('mTruck').classList.add('show')}
+$('fkSave').onclick=async()=>{const tr=plate($('k_truck').value);if(!tr){toast('Enter the truck number');return}
+  if(S.trucks.some(k=>plate(k.truck)===tr&&k.id!==S.eTruck?.id)){toast('That truck is already registered');return}
+  const doc={id:S.eTruck?.id||('K'+Date.now().toString(36)),truck:tr,driver:$('k_driver').value.trim().toUpperCase(),phone:$('k_phone').value.trim(),status:$('k_status').value,lessor:$('k_lessor').value.trim(),notes:$('k_notes').value.trim(),updatedAt:new Date().toISOString()};
+  await store.save('Truck',doc);$('mTruck').classList.remove('show');toast('Truck saved')};
+$('fkDel').onclick=()=>confirmBox('Delete this truck from the register? Its past trips stay.',async()=>{await store.del('Truck',S.eTruck.id);$('mTruck').classList.remove('show');toast('Truck deleted')});
+/* picking a truck on a trip fills its driver and phone */
+$('f_truck').addEventListener('change',()=>{const k=S.trucks.find(x=>plate(x.truck)===plate($('f_truck').value));if(!k)return;$('f_truck').value=k.truck;
+  if(k.driver)$('f_driver').value=k.driver;if(k.phone)$('f_phone').value=k.phone;if(k.status&&k.status!=='Active')toast(`Note: ${k.truck} is marked “${k.status}”`)});
+
+/* ---- find ---- */
+function find(){const raw=$('q').value.trim(),x=raw.toUpperCase();
+  if(x.length<2){$('findOut').className='empty';$('findOut').innerHTML='Type at least 2 characters: a truck, container, booking, route, driver or assistant.';return}
+  const hitT=S.trips.filter(t=>[t.truck,t.phone,t.container,t.booking,t.routeName,t.driver,t.assistant,t.notes,t.otherDesc].join(' ').toUpperCase().includes(x));
+  const hitR=S.routes.filter(r=>[r.name,r.from,r.to].join(' ').toUpperCase().includes(x));
+  const hitK=S.trucks.filter(k=>[k.truck,k.driver,k.phone,k.lessor].join(' ').toUpperCase().includes(x)||plate(k.truck).includes(x.replace(/\s+/g,'')));
+  let h='';
+  const trucks=[...new Set(hitT.filter(t=>(t.truck||'').toUpperCase().includes(x)).map(t=>t.truck))].filter(p=>!hitK.some(k=>plate(k.truck)===plate(p)));
+  if(trucks.length)h+=`<div class="hit"><h3>Trucks (${trucks.length})</h3><table><tbody>${trucks.map(k=>{const ts=S.trips.filter(t=>t.truck===k&&t.status!=='Cancelled');return `<tr><td class="cn">${esc(k)}</td><td><b>${ts.length}</b> trips</td><td>spent ${N(sumCol(ts,A))||'₦0'}</td><td>last ${fmt(ts.map(t=>t.date).sort().pop())}</td><td><a class="link" data-tk="${esc(k)}">see trips</a></td></tr>`}).join('')}</tbody></table></div>`;
+  if(hitT.length)h+=`<div class="hit"><h3>Trips (${hitT.length})</h3><table><tbody>${hitT.sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,200).map(t=>`<tr class="click" data-id="${esc(t.id)}" style="cursor:pointer"><td>${fmt(t.date)}</td><td>${pill(t.status)}</td><td class="wrap">${esc(t.routeName)}</td><td class="cn">${esc(t.truck)}</td><td class="cn">${esc(t.container)}</td><td>${esc(t.booking)}</td><td>${esc(t.driver)}</td><td class="n">${N(A(t))||N(P(t))}</td><td class="n">${vcell(V(t))}</td></tr>`).join('')}</tbody></table></div>`;
+  if(hitR.length)h+=`<div class="hit"><h3>Routes (${hitR.length})</h3><table><tbody>${hitR.map(r=>`<tr class="click" data-rid="${esc(r.id)}" style="cursor:pointer"><td class="wrap"><b>${esc(r.name)}</b></td><td>${esc([r.from,r.to].filter(Boolean).join(' → '))}</td><td class="n">${N(sumKeys(r.costs,RC.map(c=>c[0])))} per trip</td></tr>`).join('')}</tbody></table></div>`;
+  if(hitK.length)h=`<div class="hit"><h3>Trucks &amp; drivers (${hitK.length})</h3><table><tbody>${hitK.map(k=>{const st=truckStats(k);return `<tr class="click" data-kid="${esc(k.id)}" style="cursor:pointer"><td class="cn">${esc(k.truck)}</td><td>${esc(k.driver)}</td><td>${esc(k.phone)}</td><td>${esc(k.status||'Active')}${st.road?' · on the road':''}</td><td><b>${st.n}</b> trips</td><td>last ${fmt(st.last)||'—'}</td></tr>`}).join('')}</tbody></table></div>`+h;
+  if(!h)h=`<div class="empty">Nothing found for “${esc(raw)}” in trips or routes.</div>`;
+  $('findOut').className='';$('findOut').innerHTML=h;
+  $('findOut').querySelectorAll('tr[data-id]').forEach(tr=>tr.onclick=()=>openTrip(S.trips.find(t=>t.id===tr.dataset.id)));
+  $('findOut').querySelectorAll('tr[data-kid]').forEach(tr=>tr.onclick=()=>openTruck(S.trucks.find(k=>k.id===tr.dataset.kid)));
+  $('findOut').querySelectorAll('tr[data-rid]').forEach(tr=>tr.onclick=()=>openRoute(S.routes.find(r=>r.id===tr.dataset.rid)));
+  $('findOut').querySelectorAll('a[data-tk]').forEach(a=>a.onclick=()=>{clrTrips();$('per').value='';renderAll();$('tTk').value=a.dataset.tk;TS.render();show('trips')});
+}
+$('q').oninput=()=>{find();show('find')};
+
+/* ---- render all ---- */
+function renderAll(){
+  const trucks=[...new Set(S.trips.map(t=>t.truck).filter(Boolean))].sort();
+  opts($('tRt'),[...new Set(S.trips.map(t=>t.routeName).filter(Boolean))].sort(),'All routes');
+  opts($('tTk'),trucks,'All trucks');opts($('eTk'),trucks,'All trucks');
+  const dl=(id,arr)=>$(id).innerHTML=[...new Set(arr.filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
+  dl('dlTruck',[...S.trucks.map(k=>k.truck),...trucks]);dl('dlDriver',S.trips.map(t=>t.driver));dl('dlAsst',S.trips.map(t=>t.assistant));
+  renderCards();TS.render();ES.render();renderAna();KS.render();RS.render();if($('q').value.trim())find();
+}
+
+/* ---- modals ---- */
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('.mod').classList.remove('show'));
+document.querySelectorAll('.mod').forEach(m=>m.addEventListener('mousedown',e=>{if(e.target===m)m.classList.remove('show')}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.mod.show').forEach(m=>m.classList.remove('show'))});
+let cfFn=null;function confirmBox(m,fn){$('cfMsg').textContent=m;cfFn=fn;$('mConf').classList.add('show')}
+$('cfYes').onclick=async()=>{$('mConf').classList.remove('show');if(cfFn)await cfFn()};
+function needDb(){return true}
+
+/* trip form */
+$('costT').innerHTML='<thead><tr><th></th><th class="n">Planned</th><th class="n">Actual paid</th><th class="n">Over / (under)</th></tr></thead><tbody>'+
+  COSTS.map(([k,l])=>`<tr><td>${l}</td><td><input inputmode="numeric" id="p_${k}" placeholder="0"></td><td><input inputmode="numeric" id="a_${k}" placeholder="—"></td><td class="n" id="v_${k}"></td></tr>`).join('')+
+  '<tr class="tot"><td>Total</td><td class="n" id="pT"></td><td class="n" id="aT"></td><td class="n" id="vT"></td></tr></tbody>';
+function calc(){let pt=0,at=0,pa=false,aa=false;COSTS.forEach(([k])=>{const p=num($('p_'+k).value),a=num($('a_'+k).value);if(p!=null){pt+=p;pa=true}if(a!=null){at+=a;aa=true}$('v_'+k).innerHTML=p!=null&&a!=null?vcell(a-p):''});
+  $('pT').textContent=pa?N(pt):'—';$('aT').textContent=aa?N(at):'—';$('vT').innerHTML=pa&&aa?vcell(at-pt):''}
+COSTS.forEach(([k])=>{$('p_'+k).oninput=calc;$('a_'+k).oninput=calc});
+$('f_route').onchange=()=>{const r=S.routes.find(x=>x.id===$('f_route').value);if(!r)return;RC.forEach(([k])=>$('p_'+k).value=r.costs?.[k]??'');calc()};
+document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>openTrip(null));
+function fillTrip(t,dup){
+  $('f_route').innerHTML='<option value="">— choose a route —</option>'+S.routes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+  $('f_route').value=t?.routeId||'';
+  $('f_date').value=dup?TODAY:(t?.date||TODAY);$('f_status').value=dup?'Planned':(t?.status||'Planned');
+  ['truck','container','size','booking','driver','phone','assistant','otherDesc','notes'].forEach(f=>$('f_'+f).value=(dup&&['container','booking','notes','otherDesc'].includes(f))?'':(t?.[f]||''));
+  COSTS.forEach(([k])=>{$('p_'+k).value=t?.planned?.[k]??'';$('a_'+k).value=dup?'':(t?.actual?.[k]??'')});calc();
+}
+function openTrip(t){if(!t&&!needDb())return;S.eTrip=t||null;
+  $('mtTitle').textContent=t?'Trip · '+fmt(t.date):'Plan a trip';
+  $('mtSub').textContent=t?`${t.routeName||'No route'}${t.updatedAt?' · last saved '+new Date(t.updatedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}`:'Pick the route first — the planned costs fill in from the rate card.';
+  fillTrip(t,false);$('ftDel').hidden=$('ftDup').hidden=!t;['ftSave','ftDel','ftDup'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mTrip').classList.add('show')}
+$('ftDup').onclick=()=>{const t=S.eTrip;S.eTrip=null;$('mtTitle').textContent='Plan a trip (copy)';$('mtSub').textContent='Copied from the trip of '+fmt(t.date)+' — check the date, container and booking.';fillTrip(t,true);$('ftDel').hidden=$('ftDup').hidden=true};
+$('ftSave').onclick=async()=>{if(!needDb())return;
+  if(!$('f_date').value){toast('Pick a date');return}
+  const r=S.routes.find(x=>x.id===$('f_route').value);
+  const pl={},ac={};COSTS.forEach(([k])=>{const p=num($('p_'+k).value),a=num($('a_'+k).value);if(p!=null)pl[k]=p;if(a!=null)ac[k]=a});
+  if($('f_status').value==='Completed'&&!Object.keys(ac).length&&!S.eTrip?.warnedNoAct){toast('Tip: enter the actual amounts paid before marking Completed');}
+  const now=new Date().toISOString();
+  const doc={date:$('f_date').value,status:$('f_status').value,routeId:r?.id||'',routeName:r?.name||(S.eTrip&&!$('f_route').value?'':(S.eTrip?.routeName||'')),
+    truck:$('f_truck').value.trim().toUpperCase().replace(/\s+/g,' '),container:$('f_container').value.trim().toUpperCase().replace(/\s+/g,''),size:$('f_size').value,
+    booking:$('f_booking').value.trim(),driver:$('f_driver').value.trim(),phone:$('f_phone').value.trim(),assistant:$('f_assistant').value.trim(),
+    otherDesc:$('f_otherDesc').value.trim(),notes:$('f_notes').value.trim(),planned:pl,actual:ac,updatedAt:now,createdAt:S.eTrip?.createdAt||now};
+  const id=S.eTrip?.id||('T'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  $('ftSave').disabled=true;
+  try{await store.save('Trip',{id,...doc});$('mTrip').classList.remove('show');toast('Trip saved')}catch(e){saveErr(e)}finally{$('ftSave').disabled=!S.canWrite}};
+$('ftDel').onclick=()=>confirmBox('Delete this trip?',async()=>{try{await store.del('Trip',S.eTrip.id);$('mTrip').classList.remove('show');toast('Trip deleted')}catch(e){saveErr(e)}});
+
+/* route form */
+$('rCost').innerHTML=RC.map(([k,l])=>`<label>${l}<input inputmode="numeric" id="rc_${k}" placeholder="0"></label>`).join('');
+$('rNew').onclick=$('hdrRoute').onclick=()=>openRoute(null);
+function openRoute(r){if(!r&&!needDb())return;S.eRoute=r||null;$('mrTitle').textContent=r?'Edit route':'Add route';
+  ['name','from','to','km','notes'].forEach(f=>$('r_'+f).value=r?.[f]??'');RC.forEach(([k])=>$('rc_'+k).value=r?.costs?.[k]??'');
+  $('frDel').hidden=!r;['frSave','frDel'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mRoute').classList.add('show')}
+$('frSave').onclick=async()=>{if(!needDb())return;const name=$('r_name').value.trim();if(!name){toast('Give the route a name');return}
+  const costs={};RC.forEach(([k])=>{const v=num($('rc_'+k).value);if(v!=null)costs[k]=v});
+  const doc={name,from:$('r_from').value.trim(),to:$('r_to').value.trim(),km:num($('r_km').value),notes:$('r_notes').value.trim(),costs,updatedAt:new Date().toISOString()};
+  const id=S.eRoute?.id||('R'+Date.now().toString(36));$('frSave').disabled=true;
+  try{await store.save('Route',{id,...doc});
+    if(S.eRoute&&S.eRoute.name!==name){S.trips.filter(t=>t.routeId===id).forEach(t=>store.save('Trip',{...t,routeName:name}))}
+    $('mRoute').classList.remove('show');toast('Route saved')}catch(e){saveErr(e)}finally{$('frSave').disabled=!S.canWrite}};
+$('frDel').onclick=()=>confirmBox('Delete this route? Trips already on it keep their costs.',async()=>{try{await store.del('Route',S.eRoute.id);$('mRoute').classList.remove('show');toast('Route deleted')}catch(e){saveErr(e)}});
+
+function saveErr(e){toast('Could not save on this device: '+(e&&e.message||e));return;if(e?.code==='invalid_argument'){S.canWrite=false;toast('You have view-only access to this desk')}else if(e?.code==='quota_exceeded')toast('Storage is full — delete old trips to make room');else toast('Could not save — check your internet and try again')}
+
+/* ---- start ---- */
+renderAll();
+let t0='find';try{t0=localStorage.getItem('fd-tab')||'find'}catch(e){}show(t0);
+
+/* ---------- storage: this device + Google Sheet ---------- */
+const LK='fleetdesk.data.v1',CK='fleetdesk.cfg.v1';
+const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
+let L=ls.get(LK,{trips:[],routes:[],trucks:[],queue:[],lastSync:null});L.trucks=L.trucks||[];
+let CFG=ls.get(CK,{url:'',pin:''});
+const persist=()=>ls.set(LK,L);
+function loadState(){S.trips=L.trips.slice();S.routes=L.routes.slice();S.trucks=L.trucks.slice();S.loaded=2}
+function applyLocal(op){const key=op.kind.endsWith('Trip')?'trips':op.kind.endsWith('Truck')?'trucks':'routes';const arr=L[key];
+  if(op.kind.startsWith('save')){const i=arr.findIndex(x=>x.id===op.data.id);if(i>=0)arr[i]=op.data;else arr.push(op.data)}
+  else{const i=arr.findIndex(x=>x.id===op.id);if(i>=0)arr.splice(i,1)}}
+const store={
+  async save(kind,data){const op={opId:'o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),kind:'save'+kind,data};L.queue.push(op);applyLocal(op);persist();loadState();renderAll();sync()},
+  async del(kind,id){const op={opId:'o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6),kind:'delete'+kind,id};L.queue.push(op);applyLocal(op);persist();loadState();renderAll();sync()}
+};
+async function call(payload,cfg){cfg=cfg||CFG;
+  const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),25000);
+  try{const r=await fetch(cfg.url,{method:'POST',body:JSON.stringify({...payload,pin:cfg.pin}),signal:ctl.signal,redirect:'follow'});
+    const j=await r.json();if(!j.ok)throw new Error(j.error||'Error');return j}finally{clearTimeout(tm)}}
+let syncing=false,again=false,retry=null;
+function showStatus(err){
+  const q=L.queue.length,last=L.lastSync?new Date(L.lastSync).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'never';
+  if(!CFG.url){status('Not connected to your Google Sheet','off');banner('Open ⚙ Settings and enter the Google script address and your PIN. Until then, records are kept on this device only.');return}
+  if(err){status(`Offline · ${q} change${q===1?'':'s'} waiting · last synced ${last}`,'off');banner(err==='Wrong PIN'?'The PIN does not match the one in your Google script. Open ⚙ Settings to fix it.':(q?'No connection to Google right now. Your changes are kept on this device and will be sent when the signal returns.':''));return}
+  banner('');status(`Synced with Google Sheet · ${S.trucks.length} trucks · ${S.trips.length} trips · ${S.routes.length} routes · ${last}${q?` · ${q} waiting`:''}`,q?'':'on');
+}
+async function sync(){
+  if(!CFG.url||!CFG.pin){showStatus();return}
+  if(syncing){again=true;return}
+  syncing=true;clearTimeout(retry);status('Syncing…','');
+  try{
+    const ops=L.queue.slice();
+    const j=ops.length?await call({action:'batch',ops}):await call({action:'list'});
+    const done=new Set(j.done||[]);L.queue=L.queue.filter(o=>!done.has(o.opId));
+    L.trips=j.trips||[];L.routes=j.routes||[];L.trucks=j.trucks||[];L.queue.forEach(applyLocal);
+    L.lastSync=new Date().toISOString();persist();loadState();renderAll();showStatus();
+  }catch(e){showStatus(e.message==='Wrong PIN'?'Wrong PIN':'offline');retry=setTimeout(sync,30000)}
+  finally{syncing=false;if(again){again=false;sync()}}
+}
+/* settings */
+$('setBtn').onclick=()=>{$('s_url').value=CFG.url;$('s_pin').value=CFG.pin;$('s_msg').textContent='';$('mSet').classList.add('show')};
+$('syncBtn').onclick=()=>sync();
+const readSet=()=>({url:$('s_url').value.trim(),pin:$('s_pin').value.trim()});
+$('sTest').onclick=async()=>{const c=readSet();if(!/^https:\/\/script\.google(usercontent)?\.com\//.test(c.url)){$('s_msg').textContent='The address should start with https://script.google.com/macros/s/ and end with /exec';return}
+  $('s_msg').textContent='Testing…';try{await call({action:'ping'},c);$('s_msg').innerHTML='<span class="under">✓ Connected. The PIN is correct.</span>'}catch(e){$('s_msg').innerHTML=`<span class="over">✗ ${esc(e.message==='Wrong PIN'?'Wrong PIN':'Could not reach the script — check the address and that it is deployed with access “Anyone”.')}</span>`}};
+$('sSave').onclick=()=>{const c=readSet();if(!c.url||!c.pin){$('s_msg').textContent='Enter both the address and the PIN.';return}CFG=c;ls.set(CK,CFG);$('mSet').classList.remove('show');toast('Saved — syncing');sync()};
+$('sForget').onclick=()=>confirmBox('Forget the connection and the copy of records on this device? Records in your Google Sheet stay safe.',async()=>{ls.del(CK);ls.del(LK);CFG={url:'',pin:''};L={trips:[],routes:[],trucks:[],queue:[],lastSync:null};loadState();renderAll();showStatus();$('mSet').classList.remove('show')});
+/* start */
+loadState();renderAll();showStatus();sync();
+window.addEventListener('online',()=>sync());
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
+setInterval(()=>{if(document.visibilityState==='visible'&&!document.querySelector('.mod.show'))sync()},90000);
+})();
+</script>
+</body>
+</html>
