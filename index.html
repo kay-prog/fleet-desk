@@ -197,6 +197,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
       <p><b>Reading it:</b> Over / (under) is actual minus planned. Red means the trip cost more than planned. The <i>Completed, no actuals</i> flag on the Trips tab lists finished trips whose expenses are still missing.</p>
       <p>The trucks and drivers are leased, so their hire is not tracked here. Expenses tracked: levies (union / park), tolls, gate fees (terminal / port), assistant pay, and other.</p>
       <p><b>Trip report:</b> every trip also goes into a separate Google Sheet, <b>Fleet Desk – Trip Report</b>, with the trip type (import / export), truck, driver, container, route and odometer readings — no expenses, booking references or notes. It updates by itself each time you save, and you can share that file with management or the leasing company. Open it with <b>📄 Trip report</b> at the top.</p>
+      <p><b>WhatsApp update:</b> open a trip and tap <b>📤 WhatsApp</b> to send its status, route, truck, driver and phone, container(s), odometer and status note to your group — no money is included. <b>📋 Copy</b> copies the same text to paste anywhere. For two 20ft containers on one truck, choose Size <b>2 × 20'</b> and fill in the second container.</p>
       <p><b>Truck approval:</b> open a truck in the Trucks tab and set Approval to Pending, Approved or Rejected, with the decision date and the reason. A rejected truck needs a reason and can't be put on a new trip. The report's <b>Trucks</b> page shows each truck's approval, trips, kilometres and average km per trip.</p>
       <p>Export CSV opens in Excel. You can also open the Google Sheet directly to see every trip as a row. Don’t edit it there while the desk is syncing.</p>
     </div>
@@ -213,12 +214,14 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
     <label>Trip type<select id="f_type"><option value="">— choose —</option><option>Import</option><option>Export</option></select></label>
     <label>Truck No.<input id="f_truck" list="dlTruck" placeholder="LSR 123 XA"></label>
     <label class="w3">Route<select id="f_route"></select></label>
+    <label>Size<select id="f_size"><option value="">—</option><option>20'</option><option value="2x20'">2 × 20' (two containers)</option><option>40'</option><option>Loose / no container</option></select></label>
     <label>Container No.<input id="f_container" list="dlCont" placeholder="MSCU1234567"></label>
-    <label>Size<select id="f_size"><option value="">—</option><option>20'</option><option>40'</option><option>Loose / no container</option></select></label>
+    <label id="c2wrap" hidden>2nd container No.<input id="f_container2" list="dlCont" placeholder="MSCU7654321"></label>
     <label>Client / Booking ref<input id="f_booking" list="dlBook"></label>
     <label>Driver (leasing co.)<input id="f_driver" list="dlDriver"></label>
     <label>Driver phone<input id="f_phone" list="dlPhone" inputmode="tel"></label>
     <label>Assistant<input id="f_assistant" list="dlAsst"></label>
+    <label class="w3">Status note / reason <span class="mut">— goes on the WhatsApp update and the report</span><input id="f_statusNote" placeholder="e.g. Waiting at port gate · Cancelled: container not released · Breakdown at Berger"></label>
   </div>
   <div class="sect">Odometer (km)</div>
   <div class="g">
@@ -233,7 +236,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
     <label class="w3">Other expense — what was it?<input id="f_otherDesc" list="dlOther"></label>
     <label class="w3">Notes<textarea id="f_notes" rows="2"></textarea></label>
   </div>
-  <div class="foot"><button class="btn p" id="ftSave">Save trip</button><button class="btn" data-close>Cancel</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
+  <div class="foot"><button class="btn p" id="ftSave">Save trip</button><button class="btn" data-close>Cancel</button><button class="btn" id="ftShare" title="Send this trip's update to your WhatsApp group">📤 WhatsApp</button><button class="btn" id="ftCopy" title="Copy the trip update to paste anywhere">📋 Copy</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
 </div></div>
 
 <!-- truck modal -->
@@ -379,7 +382,7 @@ const tripCols=[
   {k:'tripType',h:'Type',f:t=>t.tripType?`<span class="tag ${t.tripType==='Import'?'imp':'exp'}">${esc(t.tripType)}</span>`:'<span class="mut">—</span>',x:t=>t.tripType||''},
   {k:'routeName',h:'Route',cls:'wrap'},
   {k:'truck',h:'Truck',cls:'cn'},
-  {k:'container',h:'Container',cls:'cn'},
+  {k:'container',h:'Container',cls:'cn',f:t=>esc([t.container,t.container2].filter(Boolean).join(' / '))+(t.size==="2x20'"?' <span class="tag">2×20</span>':''),x:t=>[t.container,t.container2].filter(Boolean).join(' / ')},
   {k:'booking',h:'Booking / client'},
   {k:'driver',h:'Driver'},
   {k:'assistant',h:'Assistant'},
@@ -392,7 +395,7 @@ TS.render=function(){
   const st=$('tSt').value,ty=$('tTy').value,rt=$('tRt').value,tk=$('tTk').value,fr=$('tFrom').value,to=$('tTo').value,fl=$('tFl').value,x=$('tTx').value.trim().toUpperCase();
   const useDates=fr||to;
   let rows=S.trips.filter(t=>(useDates?((!fr||t.date>=fr)&&(!to||t.date<=to)):inPer(t))&&(!st||t.status===st)&&(!ty||(ty==='-'?!t.tripType:t.tripType===ty))&&(!rt||t.routeName===rt)&&(!tk||t.truck===tk)&&
-    (!fl||(fl==='over'?(V(t)||0)>0:fl==='noodo'?(t.status==='Completed'&&KM(t)==null):(t.status==='Completed'&&A(t)==null)))&&(!x||[t.container,t.booking,t.truck,t.routeName,t.driver,t.assistant,t.notes,t.tripType].join(' ').toUpperCase().includes(x)));
+    (!fl||(fl==='over'?(V(t)||0)>0:fl==='noodo'?(t.status==='Completed'&&KM(t)==null):(t.status==='Completed'&&A(t)==null)))&&(!x||[t.container,t.container2,t.booking,t.truck,t.routeName,t.driver,t.assistant,t.notes,t.tripType,t.statusNote].join(' ').toUpperCase().includes(x)));
   TS.rows=table($('tTab'),tripCols,rows,TS,{click:id=>openTrip(S.trips.find(t=>t.id===id)),id:t=>t.id,empty:S.loaded<2&&!S.trips.length?'Loading trips…':'No trips here. Use ＋ Plan a trip to add one.',
     foot:(c,r)=>c.k==='date'?'Total':c.k==='km'?NK(sumCol(r.filter(t=>t.status!=='Cancelled'),KM)):c.k==='p'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),P)):c.k==='a'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),A)):c.k==='d'?vcell(sumCol(r.filter(t=>t.status==='Completed'),V)):''});
   const live=rows.filter(t=>t.status!=='Cancelled');
@@ -484,7 +487,7 @@ $('f_truck').addEventListener('change',()=>{prefillOdo();calcOdo();const k=S.tru
 /* ---- find ---- */
 function find(){const raw=$('q').value.trim(),x=raw.toUpperCase();
   if(x.length<2){$('findOut').className='empty';$('findOut').innerHTML='Type at least 2 characters: a truck, container, booking, route, driver or assistant.';return}
-  const hitT=S.trips.filter(t=>[t.truck,t.phone,t.container,t.booking,t.routeName,t.driver,t.assistant,t.notes,t.otherDesc].join(' ').toUpperCase().includes(x));
+  const hitT=S.trips.filter(t=>[t.truck,t.phone,t.container,t.container2,t.booking,t.routeName,t.driver,t.assistant,t.notes,t.otherDesc].join(' ').toUpperCase().includes(x));
   const hitR=S.routes.filter(r=>[r.name,r.from,r.to].join(' ').toUpperCase().includes(x));
   const hitK=S.trucks.filter(k=>[k.truck,k.driver,k.phone,k.lessor].join(' ').toUpperCase().includes(x)||plate(k.truck).includes(x.replace(/\s+/g,'')));
   let h='';
@@ -509,7 +512,7 @@ function renderAll(){
   opts($('tTk'),trucks,'All trucks');opts($('eTk'),trucks,'All trucks');
   const dl=(id,arr)=>$(id).innerHTML=[...new Set(arr.filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
   dl('dlTruck',[...S.trucks.map(k=>k.truck),...trucks]);dl('dlDriver',[...S.trucks.map(k=>k.driver),...S.trips.map(t=>t.driver)]);
-  dl('dlCont',S.trips.map(t=>t.container));dl('dlBook',S.trips.map(t=>t.booking));dl('dlPhone',[...S.trucks.map(k=>k.phone),...S.trips.map(t=>t.phone)]);
+  dl('dlCont',S.trips.flatMap(t=>[t.container,t.container2]));dl('dlBook',S.trips.map(t=>t.booking));dl('dlPhone',[...S.trucks.map(k=>k.phone),...S.trips.map(t=>t.phone)]);
   dl('dlOther',S.trips.map(t=>t.otherDesc));dl('dlLessor',S.trucks.map(k=>k.lessor));dl('dlPlace',S.routes.flatMap(r=>[r.from,r.to]));dl('dlAsst',S.trips.map(t=>t.assistant));
   renderCards();TS.render();ES.render();renderAna();KS.render();RS.render();if($('q').value.trim())find();
 }
@@ -535,7 +538,7 @@ function fillTrip(t,dup){
   $('f_route').innerHTML='<option value="">— choose a route —</option>'+S.routes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
   $('f_route').value=t?.routeId||'';
   $('f_date').value=dup?TODAY:(t?.date||TODAY);$('f_status').value=dup?'Planned':(t?.status||'Planned');$('f_type').value=t?.tripType||'';
-  ['truck','container','size','booking','driver','phone','assistant','otherDesc','notes'].forEach(f=>$('f_'+f).value=(dup&&['container','booking','notes','otherDesc'].includes(f))?'':(t?.[f]||''));
+  ['truck','container','container2','size','booking','driver','phone','assistant','otherDesc','notes','statusNote'].forEach(f=>$('f_'+f).value=(dup&&['container','container2','booking','notes','otherDesc','statusNote'].includes(f))?'':(t?.[f]||''));c2show();
   COSTS.forEach(([k])=>{$('p_'+k).value=t?.planned?.[k]??'';$('a_'+k).value=dup?'':(t?.actual?.[k]??'')});calc();
   $('f_odoStart').value=dup?'':(t?.odoStart??'');$('f_odoEnd').value=dup?'':(t?.odoEnd??'');
   if((dup||!t)&&$('f_truck').value)prefillOdo();calcOdo();
@@ -564,12 +567,40 @@ $('ftSave').onclick=async()=>{if(!needDb())return;
   {const a=num($('f_odoStart').value),b=num($('f_odoEnd').value);if(a!=null&&b!=null&&b<a){toast('End odometer reading is lower than the start — please fix it');return}}
   const now=new Date().toISOString();
   const doc={date:$('f_date').value,status:$('f_status').value,tripType:$('f_type').value,routeId:r?.id||'',routeName:r?.name||(S.eTrip&&!$('f_route').value?'':(S.eTrip?.routeName||'')),
-    truck:$('f_truck').value.trim().toUpperCase().replace(/\s+/g,' '),container:$('f_container').value.trim().toUpperCase().replace(/\s+/g,''),size:$('f_size').value,
+    truck:$('f_truck').value.trim().toUpperCase().replace(/\s+/g,' '),container:$('f_container').value.trim().toUpperCase().replace(/\s+/g,''),container2:$('f_size').value==="2x20'"?$('f_container2').value.trim().toUpperCase().replace(/\s+/g,''):'',size:$('f_size').value,statusNote:$('f_statusNote').value.trim(),
     booking:$('f_booking').value.trim(),driver:$('f_driver').value.trim(),phone:$('f_phone').value.trim(),assistant:$('f_assistant').value.trim(),
     otherDesc:$('f_otherDesc').value.trim(),notes:$('f_notes').value.trim(),odoStart:num($('f_odoStart').value),odoEnd:num($('f_odoEnd').value),planned:pl,actual:ac,updatedAt:now,createdAt:S.eTrip?.createdAt||now};
   const id=S.eTrip?.id||('T'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
   $('ftSave').disabled=true;
   try{await store.save('Trip',{id,...doc});$('mTrip').classList.remove('show');toast('Trip saved')}catch(e){saveErr(e)}finally{$('ftSave').disabled=!S.canWrite}};
+/* WhatsApp trip update */
+function c2show(){$('c2wrap').hidden=$('f_size').value!=="2x20'"}
+$('f_size').addEventListener('change',()=>{c2show();if(!$('c2wrap').hidden)$('f_container2').focus()});
+const SZ={"20'":'20ft',"40'":'40ft',"2x20'":'2 × 20ft'};
+const STE={'Planned':'🔵','In progress':'🟡','Completed':'✅','Cancelled':'🔴'};
+function tripMsg(){const v=id=>$(id).value.trim(),r=S.routes.find(x=>x.id===$('f_route').value);
+  const d=v('f_date')?new Date(v('f_date')+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  const st=$('f_status').value,size=$('f_size').value,c1=v('f_container').toUpperCase(),c2=size==="2x20'"?v('f_container2').toUpperCase():'';
+  const L=[`🚛 *TRIP UPDATE*${d?' — '+d:''}`,`*Status:* ${STE[st]||''} ${st}`.replace('  ',' ')];
+  if(v('f_type'))L.push(`*Type:* ${v('f_type')}`);
+  const route=r?.name||S.eTrip?.routeName||'';if(route)L.push(`*Route:* ${route}`);
+  if(v('f_truck'))L.push(`*Truck:* ${v('f_truck').toUpperCase()}`);
+  if(v('f_driver')||v('f_phone'))L.push(`*Driver:* ${[v('f_driver').toUpperCase(),v('f_phone')].filter(Boolean).join(' · ')}`);
+  if(size==="2x20'")L.push(`*Containers (2 × 20ft):*`,`  1. ${c1||'—'}`,`  2. ${c2||'—'}`);
+  else if(c1)L.push(`*Container:* ${c1}${SZ[size]?' ('+SZ[size]+')':''}`);
+  else if(size)L.push(`*Load:* ${SZ[size]||size}`);
+  const a=num(v('f_odoStart')),b=num(v('f_odoEnd'));
+  if(a!=null&&b!=null&&b>=a)L.push(`*Distance:* ${(b-a).toLocaleString('en-NG')} km (odometer ${a.toLocaleString('en-NG')} → ${b.toLocaleString('en-NG')})`);
+  else if(a!=null)L.push(`*Odometer out:* ${a.toLocaleString('en-NG')} km`);
+  if(v('f_statusNote'))L.push(`*${st==='Cancelled'?'Reason':'Note'}:* ${v('f_statusNote')}`);
+  return L.join('\n')}
+async function copyText(s){try{await navigator.clipboard.writeText(s);return true}catch(e){const t=document.createElement('textarea');t.value=s;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();return ok}}
+$('ftCopy').onclick=async()=>{toast(await copyText(tripMsg())?'Trip update copied — paste it in the group':'Could not copy on this device')};
+$('ftShare').onclick=async()=>{const m=tripMsg();
+  if(S.eTrip&&JSON.stringify(S.eTrip.statusNote||'')!==JSON.stringify($('f_statusNote').value.trim())||S.eTrip&&S.eTrip.status!==$('f_status').value)toast('Tip: press Save trip too, so the desk keeps this update');
+  const phone=/iPhone|iPad|Android/i.test(navigator.userAgent);
+  if(phone&&navigator.share){try{await navigator.share({text:m});return}catch(e){if(e&&e.name==='AbortError')return}}
+  window.open((phone?'whatsapp://send?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(m),'_blank')};
 $('ftDel').onclick=()=>confirmBox('Delete this trip?',async()=>{try{await store.del('Trip',S.eTrip.id);$('mTrip').classList.remove('show');toast('Trip deleted')}catch(e){saveErr(e)}});
 
 /* route form */
