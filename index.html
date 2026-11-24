@@ -197,7 +197,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
       <p><b>Reading it:</b> Over / (under) is actual minus planned. Red means the trip cost more than planned. The <i>Completed, no actuals</i> flag on the Trips tab lists finished trips whose expenses are still missing.</p>
       <p>The trucks and drivers are leased, so their hire is not tracked here. Expenses tracked: levies (union / park), tolls, gate fees (terminal / port), assistant pay, and other.</p>
       <p><b>Trip report:</b> every trip also goes into a separate Google Sheet, <b>Fleet Desk – Trip Report</b>, with the trip type (import / export), truck, driver, container, route and odometer readings — no expenses, booking references or notes. It updates by itself each time you save, and you can share that file with management or the leasing company. Open it with <b>📄 Trip report</b> at the top.</p>
-      <p><b>WhatsApp update:</b> open a trip and tap <b>📤 WhatsApp</b> to send its status, route, truck, driver and phone, container(s), odometer and status note to your group — no money is included. <b>📋 Copy</b> copies the same text to paste anywhere. For two 20ft containers on one truck, choose Size <b>2 × 20'</b> and fill in the second container.</p>
+      <p><b>WhatsApp update:</b> press <b>💾 Save + 📤 WhatsApp</b> on a trip to save it and send its status, route, truck, driver and phone, container(s), odometer and status note to your group — no money is included. <b>📋 Copy</b> copies the same text to paste anywhere. For two 20ft containers on one truck, choose Size <b>2 × 20'</b> and fill in the second container.</p>
       <p><b>Truck approval:</b> open a truck in the Trucks tab and set Approval to Pending, Approved or Rejected, with the decision date and the reason. A rejected truck needs a reason and can't be put on a new trip. The report's <b>Trucks</b> page shows each truck's approval, trips, kilometres and average km per trip.</p>
       <p>Export CSV opens in Excel. You can also open the Google Sheet directly to see every trip as a row. Don’t edit it there while the desk is syncing.</p>
     </div>
@@ -236,7 +236,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
     <label class="w3">Other expense — what was it?<input id="f_otherDesc" list="dlOther"></label>
     <label class="w3">Notes<textarea id="f_notes" rows="2"></textarea></label>
   </div>
-  <div class="foot"><button class="btn p" id="ftSave">Save trip</button><button class="btn" data-close>Cancel</button><button class="btn" id="ftShare" title="Send this trip's update to your WhatsApp group">📤 WhatsApp</button><button class="btn" id="ftCopy" title="Copy the trip update to paste anywhere">📋 Copy</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
+  <div class="foot"><button class="btn p" id="ftSaveWa" title="Save the trip and send its update to WhatsApp">💾 Save + 📤 WhatsApp</button><button class="btn" id="ftSave">Save only</button><button class="btn" data-close>Cancel</button><button class="btn" id="ftShare" title="Send this trip's update to your WhatsApp group">📤 WhatsApp</button><button class="btn" id="ftCopy" title="Copy the trip update to paste anywhere">📋 Copy</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
 </div></div>
 
 <!-- truck modal -->
@@ -264,6 +264,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
     <label>From<input id="r_from" list="dlPlace"></label>
     <label>To<input id="r_to" list="dlPlace"></label>
     <label>Distance (km)<input id="r_km" inputmode="decimal"></label>
+    <label class="w3">Short name <span class="mut">— used in the trip report and WhatsApp; leave empty to use the suggestion</span><input id="r_short" placeholder="e.g. MOWE → T26"></label>
   </div>
   <div class="sect">Usual cost per trip (₦)</div>
   <div class="g" id="rCost"></div>
@@ -380,7 +381,7 @@ const tripCols=[
   {k:'date',h:'Date',f:t=>fmt(t.date),x:t=>fmt(t.date)},
   {k:'status',h:'Status',f:t=>pill(t.status)},
   {k:'tripType',h:'Type',f:t=>t.tripType?`<span class="tag ${t.tripType==='Import'?'imp':'exp'}">${esc(t.tripType)}</span>`:'<span class="mut">—</span>',x:t=>t.tripType||''},
-  {k:'routeName',h:'Route',cls:'wrap'},
+  {k:'routeName',h:'Route',cls:'wrap',f:t=>`<span title="${esc(t.routeName)}">${esc(shortOf(t))}</span>`,x:t=>t.routeName},
   {k:'truck',h:'Truck',cls:'cn'},
   {k:'container',h:'Container',cls:'cn',f:t=>esc([t.container,t.container2].filter(Boolean).join(' / '))+(t.size==="2x20'"?' <span class="tag">2×20</span>':''),x:t=>[t.container,t.container2].filter(Boolean).join(' / ')},
   {k:'booking',h:'Booking / client'},
@@ -554,25 +555,28 @@ function prefillOdo(){if($('f_odoStart').value)return;const l=lastOdo($('f_truck
 function openTrip(t){if(!t&&!needDb())return;S.eTrip=t||null;
   $('mtTitle').textContent=t?'Trip · '+fmt(t.date):'Plan a trip';
   $('mtSub').textContent=t?`${t.routeName||'No route'}${t.updatedAt?' · last saved '+new Date(t.updatedAt).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):''}`:'Pick the route first — the planned costs fill in from the rate card.';
-  fillTrip(t,false);$('ftDel').hidden=$('ftDup').hidden=!t;['ftSave','ftDel','ftDup'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mTrip').classList.add('show')}
+  fillTrip(t,false);$('ftDel').hidden=$('ftDup').hidden=!t;['ftSave','ftSaveWa','ftDel','ftDup'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mTrip').classList.add('show')}
 $('ftDup').onclick=()=>{const t=S.eTrip;S.eTrip=null;$('mtTitle').textContent='Plan a trip (copy)';$('mtSub').textContent='Copied from the trip of '+fmt(t.date)+' — check the date, container and booking.';fillTrip(t,true);$('ftDel').hidden=$('ftDup').hidden=true};
-$('ftSave').onclick=async()=>{if(!needDb())return;
-  if(!$('f_date').value){toast('Pick a date');return}
+function tripDoc(){if(!needDb())return null;
+  if(!$('f_date').value){toast('Pick a date');return null}
   {const tk=S.trucks.find(x=>plate(x.truck)===plate($('f_truck').value));const changed=!S.eTrip||plate(S.eTrip.truck)!==plate($('f_truck').value);
-   if(tk&&changed&&tk.approval==='Rejected'){toast('Truck '+tk.truck+' was rejected'+(tk.approvalReason?': '+tk.approvalReason:'')+'. Pick another truck.');return}
+   if(tk&&changed&&tk.approval==='Rejected'){toast('Truck '+tk.truck+' was rejected'+(tk.approvalReason?': '+tk.approvalReason:'')+'. Pick another truck.');return null}
    if(tk&&changed&&tk.approval==='Pending')toast('Note: truck '+tk.truck+' is still pending approval.')}
   const r=S.routes.find(x=>x.id===$('f_route').value);
   const pl={},ac={};COSTS.forEach(([k])=>{const p=num($('p_'+k).value),a=num($('a_'+k).value);if(p!=null)pl[k]=p;if(a!=null)ac[k]=a});
   if($('f_status').value==='Completed'&&!Object.keys(ac).length&&!S.eTrip?.warnedNoAct){toast('Tip: enter the actual amounts paid before marking Completed');}
-  {const a=num($('f_odoStart').value),b=num($('f_odoEnd').value);if(a!=null&&b!=null&&b<a){toast('End odometer reading is lower than the start — please fix it');return}}
+  {const a=num($('f_odoStart').value),b=num($('f_odoEnd').value);if(a!=null&&b!=null&&b<a){toast('End odometer reading is lower than the start — please fix it');return null}}
   const now=new Date().toISOString();
   const doc={date:$('f_date').value,status:$('f_status').value,tripType:$('f_type').value,routeId:r?.id||'',routeName:r?.name||(S.eTrip&&!$('f_route').value?'':(S.eTrip?.routeName||'')),
     truck:$('f_truck').value.trim().toUpperCase().replace(/\s+/g,' '),container:$('f_container').value.trim().toUpperCase().replace(/\s+/g,''),container2:$('f_size').value==="2x20'"?$('f_container2').value.trim().toUpperCase().replace(/\s+/g,''):'',size:$('f_size').value,statusNote:$('f_statusNote').value.trim(),
     booking:$('f_booking').value.trim(),driver:$('f_driver').value.trim(),phone:$('f_phone').value.trim(),assistant:$('f_assistant').value.trim(),
     otherDesc:$('f_otherDesc').value.trim(),notes:$('f_notes').value.trim(),odoStart:num($('f_odoStart').value),odoEnd:num($('f_odoEnd').value),planned:pl,actual:ac,updatedAt:now,createdAt:S.eTrip?.createdAt||now};
   const id=S.eTrip?.id||('T'+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
-  $('ftSave').disabled=true;
-  try{await store.save('Trip',{id,...doc});$('mTrip').classList.remove('show');toast('Trip saved')}catch(e){saveErr(e)}finally{$('ftSave').disabled=!S.canWrite}};
+  return {id,...doc}}
+async function commitTrip(d,msg){$('ftSave').disabled=$('ftSaveWa').disabled=true;
+  try{await store.save('Trip',d);$('mTrip').classList.remove('show');toast(msg||'Trip saved')}catch(e){saveErr(e)}finally{$('ftSave').disabled=$('ftSaveWa').disabled=!S.canWrite}}
+$('ftSave').onclick=()=>{const d=tripDoc();if(d)commitTrip(d)};
+$('ftSaveWa').onclick=()=>{const d=tripDoc();if(!d)return;const m=tripMsg();shareMsg(m);commitTrip(d,'Trip saved · update ready for WhatsApp')};
 /* WhatsApp trip update */
 function c2show(){$('c2wrap').hidden=$('f_size').value!=="2x20'"}
 $('f_size').addEventListener('change',()=>{c2show();if(!$('c2wrap').hidden)$('f_container2').focus()});
@@ -583,7 +587,7 @@ function tripMsg(){const v=id=>$(id).value.trim(),r=S.routes.find(x=>x.id===$('f
   const st=$('f_status').value,size=$('f_size').value,c1=v('f_container').toUpperCase(),c2=size==="2x20'"?v('f_container2').toUpperCase():'';
   const L=[`🚛 *TRIP UPDATE*${d?' — '+d:''}`,`*Status:* ${STE[st]||''} ${st}`.replace('  ',' ')];
   if(v('f_type'))L.push(`*Type:* ${v('f_type')}`);
-  const route=r?.name||S.eTrip?.routeName||'';if(route)L.push(`*Route:* ${route}`);
+  const route=r?(r.short||autoShort(r.name,r.from,r.to)):(S.eTrip?shortOf(S.eTrip):'');if(route)L.push(`*Route:* ${route}`);
   if(v('f_truck'))L.push(`*Truck:* ${v('f_truck').toUpperCase()}`);
   if(v('f_driver')||v('f_phone'))L.push(`*Driver:* ${[v('f_driver').toUpperCase(),v('f_phone')].filter(Boolean).join(' · ')}`);
   if(size==="2x20'")L.push(`*Containers (2 × 20ft):*`,`  1. ${c1||'—'}`,`  2. ${c2||'—'}`);
@@ -596,8 +600,8 @@ function tripMsg(){const v=id=>$(id).value.trim(),r=S.routes.find(x=>x.id===$('f
   return L.join('\n')}
 async function copyText(s){try{await navigator.clipboard.writeText(s);return true}catch(e){const t=document.createElement('textarea');t.value=s;t.style.position='fixed';t.style.opacity='0';document.body.appendChild(t);t.select();let ok=false;try{ok=document.execCommand('copy')}catch(_){}t.remove();return ok}}
 $('ftCopy').onclick=async()=>{toast(await copyText(tripMsg())?'Trip update copied — paste it in the group':'Could not copy on this device')};
-$('ftShare').onclick=async()=>{const m=tripMsg();
-  if(S.eTrip&&JSON.stringify(S.eTrip.statusNote||'')!==JSON.stringify($('f_statusNote').value.trim())||S.eTrip&&S.eTrip.status!==$('f_status').value)toast('Tip: press Save trip too, so the desk keeps this update');
+$('ftShare').onclick=()=>shareMsg(tripMsg());
+async function shareMsg(m){
   const phone=/iPhone|iPad|Android/i.test(navigator.userAgent);
   if(phone&&navigator.share){try{await navigator.share({text:m});return}catch(e){if(e&&e.name==='AbortError')return}}
   window.open((phone?'whatsapp://send?text=':'https://web.whatsapp.com/send?text=')+encodeURIComponent(m),'_blank')};
@@ -607,11 +611,17 @@ $('ftDel').onclick=()=>confirmBox('Delete this trip?',async()=>{try{await store.
 $('rCost').innerHTML=RC.map(([k,l])=>`<label>${l}<input inputmode="numeric" id="rc_${k}" placeholder="0"></label>`).join('');
 $('rNew').onclick=$('hdrRoute').onclick=()=>openRoute(null);
 function openRoute(r){if(!r&&!needDb())return;S.eRoute=r||null;$('mrTitle').textContent=r?'Edit route':'Add route';
-  ['name','from','to','km','notes'].forEach(f=>$('r_'+f).value=r?.[f]??'');RC.forEach(([k])=>$('rc_'+k).value=r?.costs?.[k]??'');
+  ['name','from','to','km','notes','short'].forEach(f=>$('r_'+f).value=r?.[f]??'');shortHint();RC.forEach(([k])=>$('rc_'+k).value=r?.costs?.[k]??'');
   $('frDel').hidden=!r;['frSave','frDel'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mRoute').classList.add('show')}
+/* short route names */
+function autoShort(name,from,to){const p=String(name||'').split(/\s+(?:--|→|->)\s+/),hd=s=>String(s||'').split(/[,:]/)[0].trim();
+  const a=hd(from||(p.length===2?p[0]:'')),b=hd(to||(p.length===2?p[1]:''));if(a&&b)return a+' → '+b;const n=String(name||'');return n.length>40?n.slice(0,38)+'…':n}
+function shortOf(t){const r=S.routes.find(x=>x.id===t.routeId);return r?.short||autoShort(r?.name||t.routeName,r?.from,r?.to)}
+function shortHint(){$('r_short').placeholder='Suggested: '+(autoShort($('r_name').value,$('r_from').value,$('r_to').value)||'e.g. MOWE → T26')}
+['r_name','r_from','r_to'].forEach(id=>$(id).addEventListener('input',shortHint));
 $('frSave').onclick=async()=>{if(!needDb())return;const name=$('r_name').value.trim();if(!name){toast('Give the route a name');return}
   const costs={};RC.forEach(([k])=>{const v=num($('rc_'+k).value);if(v!=null)costs[k]=v});
-  const doc={name,from:$('r_from').value.trim(),to:$('r_to').value.trim(),km:num($('r_km').value),notes:$('r_notes').value.trim(),costs,updatedAt:new Date().toISOString()};
+  const doc={name,short:$('r_short').value.trim(),from:$('r_from').value.trim(),to:$('r_to').value.trim(),km:num($('r_km').value),notes:$('r_notes').value.trim(),costs,updatedAt:new Date().toISOString()};
   const id=S.eRoute?.id||('R'+Date.now().toString(36));$('frSave').disabled=true;
   try{await store.save('Route',{id,...doc});
     if(S.eRoute&&S.eRoute.name!==name){S.trips.filter(t=>t.routeId===id).forEach(t=>store.save('Trip',{...t,routeName:name}))}
