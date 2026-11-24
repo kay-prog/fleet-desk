@@ -63,7 +63,7 @@ td.wrap{white-space:normal;min-width:180px}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;color:#fff;background:var(--c)}
 .over{color:var(--warn);font-weight:650}.under{color:var(--ok);font-weight:650}.mut{color:var(--muted)}
 .tag{font-size:11px;color:var(--warn);background:var(--warn-bg);padding:1px 6px;border-radius:6px;margin-left:6px}
-.tag.imp{color:#1d4ed8;background:#dbeafe;margin-left:0}.tag.exp{color:#047857;background:#d1fae5;margin-left:0}
+.tag.imp{color:#1d4ed8;background:#dbeafe;margin-left:0}.tag.emp{color:#374151;background:#e5e7eb;margin-left:0}.tag.exp{color:#047857;background:#d1fae5;margin-left:0}
 a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
 .empty{padding:28px;text-align:center;color:var(--muted)}
 .hit{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:10px;overflow:auto}
@@ -136,7 +136,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
   <section id="t-trips" hidden>
     <div class="f">
       <label>Status<select id="tSt"><option value="">All</option><option>Planned</option><option>In progress</option><option>Completed</option><option>Cancelled</option></select></label>
-      <label>Type<select id="tTy"><option value="">All</option><option>Import</option><option>Export</option><option value="-">Not set</option></select></label>
+      <label>Type<select id="tTy"><option value="">All</option><option>Import</option><option>Export</option><option>Empty</option><option value="-">Not set</option></select></label>
       <label>Route<select id="tRt"><option value="">All routes</option></select></label>
       <label>Truck<select id="tTk"><option value="">All trucks</option></select></label>
       <label>From<input type="date" id="tFrom"></label>
@@ -211,7 +211,8 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
   <div class="g">
     <label>Date<input type="date" id="f_date"></label>
     <label>Status<select id="f_status"><option>Planned</option><option>In progress</option><option>Completed</option><option>Cancelled</option></select></label>
-    <label>Trip type<select id="f_type"><option value="">— choose —</option><option>Import</option><option>Export</option></select></label>
+    <label>Trip type<select id="f_type"><option value="">— choose —</option><option>Import</option><option>Export</option><option>Empty</option></select></label>
+    <label>Pickup / drop-off<select id="f_move"><option value="">— choose —</option><option>Pickup</option><option>Drop-off</option></select></label>
     <label>Truck No.<input id="f_truck" list="dlTruck" placeholder="LSR 123 XA"></label>
     <label class="w3">Route<select id="f_route"></select></label>
     <label>Size<select id="f_size"><option value="">—</option><option>20'</option><option value="2x20'">2 × 20' (two containers)</option><option>40'</option><option>Loose / no container</option></select></label>
@@ -380,7 +381,7 @@ function renderCards(){
 const tripCols=[
   {k:'date',h:'Date',f:t=>fmt(t.date),x:t=>fmt(t.date)},
   {k:'status',h:'Status',f:t=>pill(t.status)},
-  {k:'tripType',h:'Type',f:t=>t.tripType?`<span class="tag ${t.tripType==='Import'?'imp':'exp'}">${esc(t.tripType)}</span>`:'<span class="mut">—</span>',x:t=>t.tripType||''},
+  {k:'tripType',h:'Movement',f:t=>{const m=movement(t),ty=typeOf(t);return m?`<span class="tag ${ty==='Import'?'imp':ty==='Export'?'exp':'emp'}">${esc(m)}</span>`:'<span class="mut">—</span>'},x:t=>movement(t)},
   {k:'routeName',h:'Route',cls:'wrap',f:t=>`<span title="${esc(t.routeName)}">${esc(shortOf(t))}</span>`,x:t=>t.routeName},
   {k:'truck',h:'Truck',cls:'cn'},
   {k:'container',h:'Container',cls:'cn',f:t=>esc([t.container,t.container2].filter(Boolean).join(' / '))+(t.size==="2x20'"?' <span class="tag">2×20</span>':''),x:t=>[t.container,t.container2].filter(Boolean).join(' / ')},
@@ -395,13 +396,13 @@ const TS={sort:{k:'date',d:-1},rows:[]};
 TS.render=function(){
   const st=$('tSt').value,ty=$('tTy').value,rt=$('tRt').value,tk=$('tTk').value,fr=$('tFrom').value,to=$('tTo').value,fl=$('tFl').value,x=$('tTx').value.trim().toUpperCase();
   const useDates=fr||to;
-  let rows=S.trips.filter(t=>(useDates?((!fr||t.date>=fr)&&(!to||t.date<=to)):inPer(t))&&(!st||t.status===st)&&(!ty||(ty==='-'?!t.tripType:t.tripType===ty))&&(!rt||t.routeName===rt)&&(!tk||t.truck===tk)&&
+  let rows=S.trips.filter(t=>(useDates?((!fr||t.date>=fr)&&(!to||t.date<=to)):inPer(t))&&(!st||t.status===st)&&(!ty||(ty==='-'?!typeOf(t):typeOf(t)===ty))&&(!rt||t.routeName===rt)&&(!tk||t.truck===tk)&&
     (!fl||(fl==='over'?(V(t)||0)>0:fl==='noodo'?(t.status==='Completed'&&KM(t)==null):(t.status==='Completed'&&A(t)==null)))&&(!x||[t.container,t.container2,t.booking,t.truck,t.routeName,t.driver,t.assistant,t.notes,t.tripType,t.statusNote].join(' ').toUpperCase().includes(x)));
   TS.rows=table($('tTab'),tripCols,rows,TS,{click:id=>openTrip(S.trips.find(t=>t.id===id)),id:t=>t.id,empty:S.loaded<2&&!S.trips.length?'Loading trips…':'No trips here. Use ＋ Plan a trip to add one.',
     foot:(c,r)=>c.k==='date'?'Total':c.k==='km'?NK(sumCol(r.filter(t=>t.status!=='Cancelled'),KM)):c.k==='p'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),P)):c.k==='a'?N(sumCol(r.filter(t=>t.status!=='Cancelled'),A)):c.k==='d'?vcell(sumCol(r.filter(t=>t.status==='Completed'),V)):''});
   const live=rows.filter(t=>t.status!=='Cancelled');
-  const nImp=live.filter(t=>t.tripType==='Import').length,nExp=live.filter(t=>t.tripType==='Export').length;
-  $('tSum').innerHTML=`<b>${rows.length}</b> trips${useDates?'':' · '+mlabel($('per').value)} · ${nImp} import · ${nExp} export · planned <b>${N(sumCol(live,P))||'₦0'}</b> · actual <b>${N(sumCol(live,A))||'₦0'}</b> · click a row to open it · click a heading to sort`;
+  const nImp=live.filter(t=>typeOf(t)==='Import').length,nExp=live.filter(t=>typeOf(t)==='Export').length,nEmp=live.filter(t=>typeOf(t)==='Empty').length;
+  $('tSum').innerHTML=`<b>${rows.length}</b> trips${useDates?'':' · '+mlabel($('per').value)} · ${nImp} import · ${nExp} export · ${nEmp} empty · planned <b>${N(sumCol(live,P))||'₦0'}</b> · actual <b>${N(sumCol(live,A))||'₦0'}</b> · click a row to open it · click a heading to sort`;
 };
 function clrTrips(){['tSt','tTy','tRt','tTk','tFrom','tTo','tFl','tTx'].forEach(id=>$(id).value='')}
 ['tSt','tTy','tRt','tTk','tFrom','tTo','tFl'].forEach(id=>$(id).onchange=TS.render);$('tTx').oninput=TS.render;
@@ -533,12 +534,12 @@ $('costT').innerHTML='<thead><tr><th></th><th class="n">Planned</th><th class="n
 function calc(){let pt=0,at=0,pa=false,aa=false;COSTS.forEach(([k])=>{const p=num($('p_'+k).value),a=num($('a_'+k).value);if(p!=null){pt+=p;pa=true}if(a!=null){at+=a;aa=true}$('v_'+k).innerHTML=p!=null&&a!=null?vcell(a-p):''});
   $('pT').textContent=pa?N(pt):'—';$('aT').textContent=aa?N(at):'—';$('vT').innerHTML=pa&&aa?vcell(at-pt):''}
 COSTS.forEach(([k])=>{$('p_'+k).oninput=calc;$('a_'+k).oninput=calc});
-$('f_route').onchange=()=>{const r=S.routes.find(x=>x.id===$('f_route').value);if(!r)return;RC.forEach(([k])=>$('p_'+k).value=r.costs?.[k]??'');calc()};
+$('f_route').onchange=()=>{const r=S.routes.find(x=>x.id===$('f_route').value);if(!r)return;{const c={routeName:r.name};if(!$('f_type').value)$('f_type').value=typeOf(c);if(!$('f_move').value)$('f_move').value=moveOf(c)}RC.forEach(([k])=>$('p_'+k).value=r.costs?.[k]??'');calc()};
 document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>openTrip(null));
 function fillTrip(t,dup){
   $('f_route').innerHTML='<option value="">— choose a route —</option>'+S.routes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
   $('f_route').value=t?.routeId||'';
-  $('f_date').value=dup?TODAY:(t?.date||TODAY);$('f_status').value=dup?'Planned':(t?.status||'Planned');$('f_type').value=t?.tripType||'';
+  $('f_date').value=dup?TODAY:(t?.date||TODAY);$('f_status').value=dup?'Planned':(t?.status||'Planned');$('f_type').value=t?.tripType||'';$('f_move').value=t?.move||'';
   ['truck','container','container2','size','booking','driver','phone','assistant','otherDesc','notes','statusNote'].forEach(f=>$('f_'+f).value=(dup&&['container','container2','booking','notes','otherDesc','statusNote'].includes(f))?'':(t?.[f]||''));c2show();
   COSTS.forEach(([k])=>{$('p_'+k).value=t?.planned?.[k]??'';$('a_'+k).value=dup?'':(t?.actual?.[k]??'')});calc();
   $('f_odoStart').value=dup?'':(t?.odoStart??'');$('f_odoEnd').value=dup?'':(t?.odoEnd??'');
@@ -567,7 +568,7 @@ function tripDoc(){if(!needDb())return null;
   if($('f_status').value==='Completed'&&!Object.keys(ac).length&&!S.eTrip?.warnedNoAct){toast('Tip: enter the actual amounts paid before marking Completed');}
   {const a=num($('f_odoStart').value),b=num($('f_odoEnd').value);if(a!=null&&b!=null&&b<a){toast('End odometer reading is lower than the start — please fix it');return null}}
   const now=new Date().toISOString();
-  const doc={date:$('f_date').value,status:$('f_status').value,tripType:$('f_type').value,routeId:r?.id||'',routeName:r?.name||(S.eTrip&&!$('f_route').value?'':(S.eTrip?.routeName||'')),
+  const doc={date:$('f_date').value,status:$('f_status').value,tripType:$('f_type').value,move:$('f_move').value,routeId:r?.id||'',routeName:r?.name||(S.eTrip&&!$('f_route').value?'':(S.eTrip?.routeName||'')),
     truck:$('f_truck').value.trim().toUpperCase().replace(/\s+/g,' '),container:$('f_container').value.trim().toUpperCase().replace(/\s+/g,''),container2:$('f_size').value==="2x20'"?$('f_container2').value.trim().toUpperCase().replace(/\s+/g,''):'',size:$('f_size').value,statusNote:$('f_statusNote').value.trim(),
     booking:$('f_booking').value.trim(),driver:$('f_driver').value.trim(),phone:$('f_phone').value.trim(),assistant:$('f_assistant').value.trim(),
     otherDesc:$('f_otherDesc').value.trim(),notes:$('f_notes').value.trim(),odoStart:num($('f_odoStart').value),odoEnd:num($('f_odoEnd').value),planned:pl,actual:ac,updatedAt:now,createdAt:S.eTrip?.createdAt||now};
@@ -586,7 +587,7 @@ function tripMsg(){const v=id=>$(id).value.trim(),r=S.routes.find(x=>x.id===$('f
   const d=v('f_date')?new Date(v('f_date')+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
   const st=$('f_status').value,size=$('f_size').value,c1=v('f_container').toUpperCase(),c2=size==="2x20'"?v('f_container2').toUpperCase():'';
   const L=[`🚛 *TRIP UPDATE*${d?' — '+d:''}`,`*Status:* ${STE[st]||''} ${st}`.replace('  ',' ')];
-  if(v('f_type'))L.push(`*Type:* ${v('f_type')}`);
+  {const m=[v('f_type'),v('f_move').toLowerCase()].filter(Boolean).join(' ');if(m)L.push(`*Movement:* ${m.charAt(0).toUpperCase()+m.slice(1)}`)}
   const route=r?(r.short||autoShort(r.name,r.from,r.to)):(S.eTrip?shortOf(S.eTrip):'');if(route)L.push(`*Route:* ${route}`);
   if(v('f_truck'))L.push(`*Truck:* ${v('f_truck').toUpperCase()}`);
   if(v('f_driver')||v('f_phone'))L.push(`*Driver:* ${[v('f_driver').toUpperCase(),v('f_phone')].filter(Boolean).join(' · ')}`);
@@ -614,7 +615,11 @@ function openRoute(r){if(!r&&!needDb())return;S.eRoute=r||null;$('mrTitle').text
   ['name','from','to','km','notes','short'].forEach(f=>$('r_'+f).value=r?.[f]??'');shortHint();RC.forEach(([k])=>$('rc_'+k).value=r?.costs?.[k]??'');
   $('frDel').hidden=!r;['frSave','frDel'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mRoute').classList.add('show')}
 /* short route names */
-function autoShort(name,from,to){const p=String(name||'').split(/\s+(?:--|→|->)\s+/),hd=s=>String(s||'').split(/[,:]/)[0].trim();
+const CODEW=/^\s*(?:(?:PICK\s*-?\s*UP|DROP\s*-?\s*OFF|EXPORT|IMPORT|EMPTY|OFF)\b[\s,:-]*)+/i;
+function typeOf(t){if(t.tripType)return t.tripType;const n=String(t.routeName||'').toUpperCase();return /\bEMPTY\b/.test(n)?'Empty':/\bIMPORT\b/.test(n)?'Import':/\bEXPORT\b/.test(n)?'Export':''}
+function moveOf(t){if(t.move)return t.move;const n=String(t.routeName||'').toUpperCase();return /DROP\s*-?\s*OFF/.test(n)?'Drop-off':/PICK\s*-?\s*UP/.test(n)?'Pickup':''}
+function movement(t){const a=typeOf(t),b=moveOf(t);return a&&b?a+' '+b.toLowerCase():(a||b)}
+function autoShort(name,from,to){const p=String(name||'').split(/\s+(?:--|→|->)\s+/),hd=s=>String(s||'').replace(CODEW,'').split(/[,:]/)[0].trim();
   const a=hd(from||(p.length===2?p[0]:'')),b=hd(to||(p.length===2?p[1]:''));if(a&&b)return a+' → '+b;const n=String(name||'');return n.length>40?n.slice(0,38)+'…':n}
 function shortOf(t){const r=S.routes.find(x=>x.id===t.routeId);return r?.short||autoShort(r?.name||t.routeName,r?.from,r?.to)}
 function shortHint(){$('r_short').placeholder='Suggested: '+(autoShort($('r_name').value,$('r_from').value,$('r_to').value)||'e.g. MOWE → T26')}
