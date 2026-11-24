@@ -534,7 +534,7 @@ $('costT').innerHTML='<thead><tr><th></th><th class="n">Planned</th><th class="n
 function calc(){let pt=0,at=0,pa=false,aa=false;COSTS.forEach(([k])=>{const p=num($('p_'+k).value),a=num($('a_'+k).value);if(p!=null){pt+=p;pa=true}if(a!=null){at+=a;aa=true}$('v_'+k).innerHTML=p!=null&&a!=null?vcell(a-p):''});
   $('pT').textContent=pa?N(pt):'—';$('aT').textContent=aa?N(at):'—';$('vT').innerHTML=pa&&aa?vcell(at-pt):''}
 COSTS.forEach(([k])=>{$('p_'+k).oninput=calc;$('a_'+k).oninput=calc});
-$('f_route').onchange=()=>{const r=S.routes.find(x=>x.id===$('f_route').value);if(!r)return;{const c={routeName:r.name};if(!$('f_type').value)$('f_type').value=typeOf(c);if(!$('f_move').value)$('f_move').value=moveOf(c)}RC.forEach(([k])=>$('p_'+k).value=r.costs?.[k]??'');calc()};
+$('f_route').onchange=()=>{const r=S.routes.find(x=>x.id===$('f_route').value);if(!r)return;{const c={routeName:[r.name,r.from,r.to].join(' ')};if(!$('f_type').value)$('f_type').value=typeOf(c);if(!$('f_move').value)$('f_move').value=moveOf(c)}RC.forEach(([k])=>$('p_'+k).value=r.costs?.[k]??'');calc()};
 document.querySelectorAll('[data-new]').forEach(b=>b.onclick=()=>openTrip(null));
 function fillTrip(t,dup){
   $('f_route').innerHTML='<option value="">— choose a route —</option>'+S.routes.map(r=>`<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
@@ -616,10 +616,11 @@ function openRoute(r){if(!r&&!needDb())return;S.eRoute=r||null;$('mrTitle').text
   $('frDel').hidden=!r;['frSave','frDel'].forEach(id=>$(id).disabled=!S.canWrite||!S.db);$('mRoute').classList.add('show')}
 /* short route names */
 const CODEW=/^\s*(?:(?:PICK\s*-?\s*UP|DROP\s*-?\s*OFF|EXPORT|IMPORT|EMPTY|OFF)\b[\s,:-]*)+/i;
-function typeOf(t){if(t.tripType)return t.tripType;const n=String(t.routeName||'').toUpperCase();return /\bEMPTY\b/.test(n)?'Empty':/\bIMPORT\b/.test(n)?'Import':/\bEXPORT\b/.test(n)?'Export':''}
-function moveOf(t){if(t.move)return t.move;const n=String(t.routeName||'').toUpperCase();return /DROP\s*-?\s*OFF/.test(n)?'Drop-off':/PICK\s*-?\s*UP/.test(n)?'Pickup':''}
+function rtext(t){const r=t.routeId&&S.routes.find(x=>x.id===t.routeId);return [t.routeName,r?.from,r?.to].join(' ').toUpperCase()}
+function typeOf(t){if(t.tripType)return t.tripType;const n=rtext(t);return /\bEMPTY\b/.test(n)?'Empty':/\bIMPORT\b/.test(n)?'Import':/\bEXPORT\b/.test(n)?'Export':''}
+function moveOf(t){if(t.move)return t.move;const n=rtext(t);return /DROP\s*-?\s*OFF/.test(n)?'Drop-off':/PICK\s*-?\s*UP/.test(n)?'Pickup':''}
 function movement(t){const a=typeOf(t),b=moveOf(t);return a&&b?a+' '+b.toLowerCase():(a||b)}
-function autoShort(name,from,to){const p=String(name||'').split(/\s+(?:--|→|->)\s+/),hd=s=>String(s||'').replace(CODEW,'').split(/[,:]/)[0].trim();
+function autoShort(name,from,to){const p=String(name||'').split(/\s+(?:--|→|->)\s+/),hd=s=>String(s||'').replace(CODEW,'').split(/[,:]/)[0].trim();if(p.length===2&&String(name).length<=40)return String(name).trim();
   const a=hd(from||(p.length===2?p[0]:'')),b=hd(to||(p.length===2?p[1]:''));if(a&&b)return a+' → '+b;const n=String(name||'');return n.length>40?n.slice(0,38)+'…':n}
 function shortOf(t){const r=S.routes.find(x=>x.id===t.routeId);return r?.short||autoShort(r?.name||t.routeName,r?.from,r?.to)}
 function shortHint(){$('r_short').placeholder='Suggested: '+(autoShort($('r_name').value,$('r_from').value,$('r_to').value)||'e.g. MOWE → T26')}
