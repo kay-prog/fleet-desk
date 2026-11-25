@@ -144,7 +144,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
       <label>Flag<select id="tFl"><option value="">Any</option><option value="over">Over plan</option><option value="noact">Completed, no actuals</option><option value="noodo">Completed, no odometer</option></select></label>
       <label>Text<input id="tTx" placeholder="container, booking…"></label>
       <button class="btn" id="tClr">Clear</button>
-      <button class="btn p" id="tCsv">Export CSV</button>
+      <button class="btn p" id="tRet" title="Statement of money received and spent for the trips shown">🧾 Fund retirement</button><button class="btn" id="tCsv">Export CSV</button>
       <button class="btn" onclick="print()">Print</button>
     </div>
     <div class="sum" id="tSum"></div>
@@ -197,6 +197,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
       <p><b>Reading it:</b> Over / (under) is actual minus planned. Red means the trip cost more than planned. The <i>Completed, no actuals</i> flag on the Trips tab lists finished trips whose expenses are still missing.</p>
       <p>The trucks and drivers are leased, so their hire is not tracked here. Expenses tracked: levies (union / park), tolls, gate fees (terminal / port), assistant pay, and other.</p>
       <p><b>Trip report:</b> every trip also goes into a separate Google Sheet, <b>Fleet Desk – Trip Report</b>, with the trip type (import / export), truck, driver, container, route and odometer readings — no expenses, booking references or notes. It updates by itself each time you save, and you can share that file with management or the leasing company. Open it with <b>📄 Trip report</b> at the top.</p>
+      <p><b>Fund retirement:</b> on the Trips tab set the From and To dates (and any truck or route filter), then tap <b>🧾 Fund retirement</b>. Record the money you received for those dates; the statement lists every trip with its expenses, odometer and km, and shows Received, Spent and Balance. Print it (or save as PDF), export it to Excel, or copy the summary for WhatsApp.</p>
       <p><b>WhatsApp update:</b> press <b>💾 Save + 📤 WhatsApp</b> on a trip to save it and send its status, route, truck, driver and phone, container(s), odometer and status note to your group — no money is included. <b>📋 Copy</b> copies the same text to paste anywhere. For two 20ft containers on one truck, choose Size <b>2 × 20'</b> and fill in the second container.</p>
       <p><b>Truck approval:</b> open a truck in the Trucks tab and set Approval to Pending, Approved or Rejected, with the decision date and the reason. A rejected truck needs a reason and can't be put on a new trip. The report's <b>Trucks</b> page shows each truck's approval, trips, kilometres and average km per trip.</p>
       <p>Export CSV opens in Excel. You can also open the Google Sheet directly to see every trip as a row. Don’t edit it there while the desk is syncing.</p>
@@ -240,6 +241,22 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
   <div class="foot"><button class="btn p" id="ftSaveWa" title="Save the trip and send its update to WhatsApp">💾 Save + 📤 WhatsApp</button><button class="btn" id="ftSave">Save only</button><button class="btn" data-close>Cancel</button><button class="btn" id="ftShare" title="Send this trip's update to your WhatsApp group">📤 WhatsApp</button><button class="btn" id="ftCopy" title="Copy the trip update to paste anywhere">📋 Copy</button><span class="sp"></span><button class="btn" id="ftDup" hidden>Duplicate</button><button class="btn d" id="ftDel" hidden>Delete</button></div>
 </div></div>
 
+<!-- fund retirement modal -->
+<div class="mod" id="mRet"><div class="sheet" style="max-width:1100px">
+  <h2>Fund retirement</h2><div class="sub" id="rtSub"></div>
+  <div class="sect">Money received in this period</div>
+  <div class="tw short"><table id="rtFunds"></table></div>
+  <div class="g" style="margin-top:8px">
+    <label>Date received<input type="date" id="fu_date"></label>
+    <label>Amount (₦)<input id="fu_amount" inputmode="numeric" placeholder="500000"></label>
+    <label>Reference / from<input id="fu_ref" placeholder="e.g. Initial funding · Accounts"></label>
+  </div>
+  <div class="foot" style="margin-top:8px"><button class="btn" id="fuAdd">＋ Add money received</button></div>
+  <div class="sect">Trips and expenses</div>
+  <div class="tw"><table id="rtTab"></table></div>
+  <div class="sum" id="rtSum" style="margin-top:10px;font-size:15px"></div>
+  <div class="foot"><button class="btn p" id="rtPrint">🖨 Print / save PDF</button><button class="btn" id="rtCsv">Export CSV (Excel)</button><button class="btn" id="rtCopy">📋 Copy summary</button><span class="sp"></span><button class="btn" data-close>Close</button></div>
+</div></div>
 <!-- truck modal -->
 <div class="mod" id="mTruck"><div class="sheet" style="max-width:560px">
   <h2 id="mkTitle">Add truck</h2><div class="sub">Leased truck and the driver supplied with it.</div>
@@ -300,7 +317,7 @@ document.querySelectorAll('input,textarea').forEach((el,i)=>{el.setAttribute('au
 const COSTS=[["levies","Levies (union / park)"],["tolls","Tolls"],["gate","Gate fees (terminal / port)"],["assistant","Assistant pay"],["other","Other"]];
 const RC=COSTS.filter(c=>c[0]!=="other");
 const SC={"Planned":"var(--s-plan)","In progress":"var(--s-prog)","Completed":"var(--s-done)","Cancelled":"var(--s-canc)"};
-const S={db:true,trucks:[],eTruck:null,routes:[],trips:[],canWrite:true,live:false,loaded:0,eTrip:null,eRoute:null};
+const S={db:true,funds:[],trucks:[],eTruck:null,routes:[],trips:[],canWrite:true,live:false,loaded:0,eTrip:null,eRoute:null};
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const num=v=>{if(v===''||v==null)return null;const n=Number(String(v).replace(/[,₦\s]/g,''));return isFinite(n)?n:null};
 const N=n=>n==null||n===''?'':(n<0?'-':'')+'₦'+Math.abs(Math.round(n)).toLocaleString('en-NG');
@@ -578,6 +595,66 @@ async function commitTrip(d,msg){$('ftSave').disabled=$('ftSaveWa').disabled=tru
   try{await store.save('Trip',d);$('mTrip').classList.remove('show');toast(msg||'Trip saved')}catch(e){saveErr(e)}finally{$('ftSave').disabled=$('ftSaveWa').disabled=!S.canWrite}}
 $('ftSave').onclick=()=>{const d=tripDoc();if(d)commitTrip(d)};
 $('ftSaveWa').onclick=()=>{const d=tripDoc();if(!d)return;const m=tripMsg();shareMsg(m);commitTrip(d,'Trip saved · update ready for WhatsApp')};
+/* ---- fund retirement ---- */
+function contsOf(t){return [t.container,t.container2].join(',').split(/[\s,;\/]+/).filter(Boolean)}
+function sizeOf(t){const c=contsOf(t);if(t.size==="2x20'"||(c.length===2&&t.size==="20'"))return "2 × 20'";return t.size||''}
+function retPeriod(){const fr=$('tFrom').value,to=$('tTo').value;
+  if(fr||to)return {fr,to,label:(fr?fmt(fr):'start')+' to '+(to?fmt(to):'today')};
+  const p=$('per').value;return p?{fr:p+'-01',to:p+'-31',label:mlabel(p)}:{fr:'',to:'',label:'All time'}}
+function retData(){const pr=retPeriod();
+  const trips=(TS.rows||[]).filter(t=>t.status!=='Cancelled'||A(t)!=null).slice().sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const lines=trips.map(t=>{const a=A(t),p=P(t);return {t,exp:a!=null?a:p,planned:a==null&&p!=null,
+    note:[t.booking&&('Booking '+t.booking),t.otherDesc,t.notes,t.statusNote].filter(Boolean).join(' · ')}});
+  const funds=S.funds.filter(f=>(!pr.fr||f.date>=pr.fr)&&(!pr.to||f.date<=pr.to)).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const got=funds.reduce((s,f)=>s+(num(f.amount)||0),0),spent=lines.reduce((s,l)=>s+(l.exp||0),0);
+  const km=trips.reduce((s,t)=>s+(KM(t)||0),0);
+  return {pr,lines,funds,got,spent,bal:got-spent,km,anyPlanned:lines.some(l=>l.planned)}}
+const RC_COLS=[['Date',l=>fmt(l.t.date)],['Status',l=>l.t.status],['Movement',l=>movement(l.t)],['Route',l=>shortOf(l.t)],['Truck',l=>l.t.truck],
+  ['Container(s)',l=>contsOf(l.t).join(' / ')],['Size',l=>sizeOf(l.t)],['Driver',l=>l.t.driver],['Expenses (₦)',l=>l.exp],
+  ['Odo start',l=>l.t.odoStart??''],['Odo end',l=>l.t.odoEnd??''],['Km',l=>KM(l.t)??''],['Note',l=>l.note]];
+function openRet(){if(TS.render)TS.render();const d=retData();
+  $('rtSub').textContent=`${d.pr.label} · ${d.lines.length} trip${d.lines.length===1?'':'s'} — uses the filters on the Trips tab (dates, truck, route…)`;
+  $('fu_date').value=d.pr.fr&&d.pr.fr<=TODAY?(TODAY<=(d.pr.to||TODAY)?TODAY:d.pr.fr):TODAY;
+  $('rtFunds').innerHTML='<thead><tr><th>Date</th><th>Reference / from</th><th class="n">Amount</th><th></th></tr></thead><tbody>'+
+    (d.funds.length?d.funds.map(f=>`<tr><td>${fmt(f.date)}</td><td>${esc(f.ref||'')}</td><td class="n">${N(num(f.amount))}</td><td><a class="link" data-fdel="${esc(f.id)}">remove</a></td></tr>`).join(''):'<tr><td colspan="4" class="empty">No money recorded for these dates yet. Add it below.</td></tr>')+
+    `</tbody><tfoot><tr><td>Total received</td><td></td><td class="n">${N(d.got)||'₦0'}</td><td></td></tr></tfoot>`;
+  $('rtFunds').querySelectorAll('[data-fdel]').forEach(a=>a.onclick=()=>confirmBox('Remove this money received?',async()=>{await store.del('Fund',a.dataset.fdel);openRet()}));
+  $('rtTab').innerHTML='<thead><tr>'+RC_COLS.map(([h])=>`<th class="${/₦|Odo|Km/.test(h)?'n':''}">${h}</th>`).join('')+'</tr></thead><tbody>'+
+    (d.lines.length?d.lines.map(l=>'<tr>'+RC_COLS.map(([h,f])=>{let v=f(l);if(h==='Expenses (₦)')return `<td class="n">${v==null?'':Math.round(v).toLocaleString('en-NG')+(l.planned?' <span class="mut" title="planned — no actual amount entered yet">*</span>':'')}</td>`;
+      return `<td class="${/Odo|Km/.test(h)?'n':/Note|Route/.test(h)?'wrap':''}">${esc(typeof v==='number'?v.toLocaleString('en-NG'):v??'')}</td>`}).join('')+'</tr>').join(''):`<tr><td colspan="${RC_COLS.length}" class="empty">No trips for these filters.</td></tr>`)+
+    `</tbody><tfoot><tr><td colspan="2"><b>${d.lines.length} trips</b></td><td colspan="6"></td><td class="n"><b>${Math.round(d.spent).toLocaleString('en-NG')}</b></td><td></td><td></td><td class="n">${d.km?Math.round(d.km).toLocaleString('en-NG'):''}</td><td></td></tr></tfoot>`;
+  $('rtSum').innerHTML=`Received <b>${N(d.got)||'₦0'}</b> · Spent <b>${N(d.spent)||'₦0'}</b> · <b class="${d.bal<0?'over':'under'}">${d.bal<0?'Over-spent':'Balance'} ${N(Math.abs(d.bal))||'₦0'}</b>`+
+    (d.anyPlanned?'<br><span class="mut" style="font-size:12px">* planned amount — no actual paid entered for that trip yet.</span>':'');
+  $('mRet').classList.add('show')}
+$('tRet').onclick=openRet;
+$('fuAdd').onclick=async()=>{const amt=num($('fu_amount').value);if(!$('fu_date').value){toast('Pick the date the money was received');return}if(!amt){toast('Enter the amount received');return}
+  await store.save('Fund',{id:'F'+Date.now().toString(36),date:$('fu_date').value,amount:amt,ref:$('fu_ref').value.trim(),notes:'',updatedAt:new Date().toISOString()});
+  $('fu_amount').value='';$('fu_ref').value='';toast('Money received added');openRet()};
+$('rtCsv').onclick=()=>{const d=retData();const cols=RC_COLS.map(([h,f])=>({h,x:f}));
+  const rows=[...d.lines,{t:{},exp:d.spent,note:'',_tot:1}];
+  const c2=cols.map(c=>({h:c.h,x:r=>r._tot?(c.h==='Date'?'TOTAL':c.h==='Status'?d.lines.length+' trips':c.h==='Expenses (₦)'?d.spent:c.h==='Km'?(d.km||''):c.h==='Driver'?'Received: '+d.got:c.h==='Note'?(d.bal<0?'Over-spent: ':'Balance: ')+Math.abs(d.bal):''):c.x(r)}));
+  saveCsv('fund-retirement-'+(d.pr.fr||'')+'-to-'+(d.pr.to||TODAY)+'.csv',c2,rows)};
+$('rtCopy').onclick=async()=>{const d=retData();
+  const m=[`🧾 *FUND RETIREMENT* — ${d.pr.label}`,`*Trips:* ${d.lines.length}${d.km?' · '+Math.round(d.km).toLocaleString('en-NG')+' km':''}`,
+    `*Received:* ${N(d.got)||'₦0'}`,`*Spent:* ${N(d.spent)||'₦0'}`,`*${d.bal<0?'Over-spent':'Balance'}:* ${N(Math.abs(d.bal))||'₦0'}`].join('\n');
+  toast(await copyText(m)?'Summary copied':'Could not copy on this device')};
+$('rtPrint').onclick=()=>{const d=retData();const e=s=>esc(s==null?'':String(s));
+  const body=d.lines.map(l=>'<tr>'+RC_COLS.map(([h,f])=>{const v=f(l);return `<td class="${/₦|Odo|Km/.test(h)?'n':''}">${h==='Expenses (₦)'?(v==null?'':Math.round(v).toLocaleString('en-NG')+(l.planned?'*':'')):e(typeof v==='number'?v.toLocaleString('en-NG'):v)}</td>`}).join('')+'</tr>').join('');
+  const fl=d.funds.map(f=>`<tr><td>${fmt(f.date)}</td><td>${e(f.ref)}</td><td class="n">${N(num(f.amount))}</td></tr>`).join('')||'<tr><td colspan="3">None recorded</td></tr>';
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>Fund retirement ${e(d.pr.label)}</title><style>
+  body{font:12px Arial,sans-serif;color:#111;margin:18px}h1{font-size:18px;margin:0 0 2px;color:#14532d}.s{color:#555;margin-bottom:12px}
+  table{border-collapse:collapse;width:100%;margin-bottom:12px}th{background:#166534;color:#fff;text-align:left;padding:5px;font-size:11px}td{border-bottom:1px solid #ddd;padding:4px 5px;vertical-align:top;font-size:11px}
+  .n{text-align:right;white-space:nowrap}tfoot td{font-weight:bold;background:#ecfdf5;border-top:2px solid #166534}.box{display:flex;gap:24px;font-size:14px;margin:8px 0 16px}.box b{display:block;font-size:17px}
+  .sig{display:flex;gap:40px;margin-top:36px}.sig div{flex:1;border-top:1px solid #333;padding-top:4px}@page{size:A4 landscape;margin:12mm}</style></head><body>
+  <h1>FUND RETIREMENT — FLEET TRIPS</h1><div class="s">Period: ${e(d.pr.label)} · prepared ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+  <div class="box"><div>Received<b>${N(d.got)||'₦0'}</b></div><div>Spent<b>${N(d.spent)||'₦0'}</b></div><div>${d.bal<0?'Over-spent':'Balance'}<b style="color:${d.bal<0?'#b91c1c':'#15803d'}">${N(Math.abs(d.bal))||'₦0'}</b></div><div>Trips<b>${d.lines.length}</b></div><div>Km<b>${d.km?Math.round(d.km).toLocaleString('en-NG'):'—'}</b></div></div>
+  <table><thead><tr><th>Date received</th><th>Reference / from</th><th class="n">Amount</th></tr></thead><tbody>${fl}</tbody><tfoot><tr><td>Total received</td><td></td><td class="n">${N(d.got)||'₦0'}</td></tr></tfoot></table>
+  <table><thead><tr>${RC_COLS.map(([h])=>`<th class="${/₦|Odo|Km/.test(h)?'n':''}">${h}</th>`).join('')}</tr></thead><tbody>${body}</tbody>
+  <tfoot><tr><td colspan="2">${d.lines.length} trips</td><td colspan="6"></td><td class="n">${Math.round(d.spent).toLocaleString('en-NG')}</td><td></td><td></td><td class="n">${d.km?Math.round(d.km).toLocaleString('en-NG'):''}</td><td></td></tr></tfoot></table>
+  ${d.anyPlanned?'<div class="s">* planned amount — actual not yet entered.</div>':''}
+  <div class="sig"><div>Prepared by (Fleet Manager)</div><div>Checked by</div><div>Approved by</div></div></body></html>`;
+  const w=window.open('','_blank');if(!w){toast('Allow pop-ups to print');return}w.document.write(html);w.document.close();setTimeout(()=>{w.focus();w.print()},300)};
+
 /* WhatsApp trip update */
 function c2show(){$('c2wrap').hidden=$('f_size').value!=="2x20'"}
 $('f_size').addEventListener('change',()=>{c2show();if(!$('c2wrap').hidden)$('f_container2').focus()});
@@ -643,11 +720,11 @@ let t0='find';try{t0=localStorage.getItem('fd-tab')||'find'}catch(e){}show(t0);
 /* ---------- storage: this device + Google Sheet ---------- */
 const LK='fleetdesk.data.v1',CK='fleetdesk.cfg.v1';
 const ls={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}},del(k){try{localStorage.removeItem(k)}catch(e){}}};
-let L=ls.get(LK,{trips:[],routes:[],trucks:[],queue:[],lastSync:null});L.trucks=L.trucks||[];
+let L=ls.get(LK,{trips:[],routes:[],trucks:[],funds:[],queue:[],lastSync:null});L.trucks=L.trucks||[];L.funds=L.funds||[];
 let CFG=ls.get(CK,{url:'',pin:''});
 const persist=()=>ls.set(LK,L);
-function loadState(){S.trips=L.trips.slice();S.routes=L.routes.slice();S.trucks=L.trucks.slice();S.loaded=2}
-function applyLocal(op){const key=op.kind.endsWith('Trip')?'trips':op.kind.endsWith('Truck')?'trucks':'routes';const arr=L[key];
+function loadState(){S.trips=L.trips.slice();S.routes=L.routes.slice();S.trucks=L.trucks.slice();S.funds=(L.funds||[]).slice();S.loaded=2}
+function applyLocal(op){const key=op.kind.endsWith('Trip')?'trips':op.kind.endsWith('Truck')?'trucks':op.kind.endsWith('Fund')?'funds':'routes';L[key]=L[key]||[];const arr=L[key];
   if(op.kind.startsWith('save')){const i=arr.findIndex(x=>x.id===op.data.id);if(i>=0)arr[i]=op.data;else arr.push(op.data)}
   else{const i=arr.findIndex(x=>x.id===op.id);if(i>=0)arr.splice(i,1)}}
 const store={
@@ -674,7 +751,7 @@ async function sync(){
     const ops=L.queue.slice();
     const j=ops.length?await call({action:'batch',ops}):await call({action:'list'});
     const done=new Set(j.done||[]);L.queue=L.queue.filter(o=>!done.has(o.opId));
-    L.trips=j.trips||[];L.routes=j.routes||[];L.trucks=j.trucks||[];L.queue.forEach(applyLocal);
+    L.trips=j.trips||[];L.routes=j.routes||[];L.trucks=j.trucks||[];if(j.funds)L.funds=j.funds;L.queue.forEach(applyLocal);
     if(j.reportUrl)L.reportUrl=j.reportUrl;
     L.lastSync=new Date().toISOString();persist();loadState();renderAll();showStatus();
   }catch(e){showStatus(e.message==='Wrong PIN'?'Wrong PIN':'offline');retry=setTimeout(sync,30000)}
@@ -693,7 +770,7 @@ function explain(e){const m=String(e&&e.message||e);
   if(/Failed to fetch|NetworkError|Load failed/i.test(m))return 'The browser blocked or could not complete the call to Google.';
   return 'The script answered with an error: '+m;}
 $('sSave').onclick=()=>{const c=readSet();if(!c.url||!c.pin){$('s_msg').textContent='Enter both the address and the PIN.';return}CFG=c;ls.set(CK,CFG);$('mSet').classList.remove('show');toast('Saved — syncing');sync()};
-$('sForget').onclick=()=>confirmBox('Forget the connection and the copy of records on this device? Records in your Google Sheet stay safe.',async()=>{ls.del(CK);ls.del(LK);CFG={url:'',pin:''};L={trips:[],routes:[],trucks:[],queue:[],lastSync:null};loadState();renderAll();showStatus();$('mSet').classList.remove('show')});
+$('sForget').onclick=()=>confirmBox('Forget the connection and the copy of records on this device? Records in your Google Sheet stay safe.',async()=>{ls.del(CK);ls.del(LK);CFG={url:'',pin:''};L={trips:[],routes:[],trucks:[],funds:[],queue:[],lastSync:null};loadState();renderAll();showStatus();$('mSet').classList.remove('show')});
 /* start */
 loadState();renderAll();showStatus();sync();
 window.addEventListener('online',()=>sync());
