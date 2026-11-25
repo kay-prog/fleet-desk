@@ -255,7 +255,7 @@ a.link{color:var(--accent);cursor:pointer;text-decoration:underline}
   <div class="sect">Trips and expenses</div>
   <div class="tw"><table id="rtTab"></table></div>
   <div class="sum" id="rtSum" style="margin-top:10px;font-size:15px"></div>
-  <div class="foot"><button class="btn p" id="rtPrint">🖨 Print / save PDF</button><button class="btn" id="rtCsv">Export CSV (Excel)</button><button class="btn" id="rtCopy">📋 Copy summary</button><span class="sp"></span><button class="btn" data-close>Close</button></div>
+  <div class="foot"><button class="btn p" id="rtSheet" title="Make a designed statement in Google Sheets — download it as Excel or PDF from there">📊 Formatted sheet</button><button class="btn" id="rtPrint">🖨 Print / save PDF</button><button class="btn" id="rtCsv" title="Plain data for Excel">CSV</button><button class="btn" id="rtCopy">📋 Copy summary</button><span class="sp"></span><button class="btn" data-close>Close</button></div>
 </div></div>
 <!-- truck modal -->
 <div class="mod" id="mTruck"><div class="sheet" style="max-width:560px">
@@ -634,6 +634,18 @@ $('rtCsv').onclick=()=>{const d=retData();const cols=RC_COLS.map(([h,f])=>({h,x:
   const rows=[...d.lines,{t:{},exp:d.spent,note:'',_tot:1}];
   const c2=cols.map(c=>({h:c.h,x:r=>r._tot?(c.h==='Date'?'TOTAL':c.h==='Status'?d.lines.length+' trips':c.h==='Expenses (₦)'?d.spent:c.h==='Km'?(d.km||''):c.h==='Driver'?'Received: '+d.got:c.h==='Note'?(d.bal<0?'Over-spent: ':'Balance: ')+Math.abs(d.bal):''):c.x(r)}));
   saveCsv('fund-retirement-'+(d.pr.fr||'')+'-to-'+(d.pr.to||TODAY)+'.csv',c2,rows)};
+$('rtSheet').onclick=async()=>{if(!CFG.url||!CFG.pin){toast('Connect to your Google Sheet first (⚙ Settings)');return}
+  const d=retData();const w=window.open('','_blank');
+  if(w)w.document.write('<p style="font:16px Arial;padding:24px">Making your fund retirement sheet… this takes a few seconds.</p>');
+  const sl=s=>s?new Date(s+'T12:00:00').toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'';
+  const tab=d.pr.fr||d.pr.to?`${sl(d.pr.fr)||'Start'} – ${sl(d.pr.to)||'today'}`:'All time';
+  const fl=[$('tTk').value&&'Truck '+$('tTk').value,$('tRt').value&&'Route '+$('tRt').value,$('tSt').value&&$('tSt').value+' only',$('tTy').value&&($('tTy').value==='-'?'type not set':$('tTy').value+' only'),$('tTx').value.trim()&&'search "'+$('tTx').value.trim()+'"'].filter(Boolean).join(' · ');
+  const data={tab:($('tTk').value?$('tTk').value+' ':'')+tab,label:d.pr.label,filters:fl,got:d.got,spent:d.spent,bal:d.bal,km:Math.round(d.km),trips:d.lines.length,anyPlanned:d.anyPlanned,
+    funds:d.funds.map(f=>[f.date,f.ref||'',num(f.amount)??'']),
+    lines:d.lines.map(l=>[...RC_COLS.map(([h,f])=>{const v=h==='Date'?l.t.date:f(l);return v==null?'':v}),l.planned?1:0])};
+  toast('Making the formatted sheet…');
+  try{const j=await call({action:'retirement',data});if(w)w.location.href=j.url;else window.open(j.url,'_blank');toast('Fund retirement sheet ready')}
+  catch(e){if(w)w.close();toast(/Unknown action/.test(e.message)?'Update the Google script (Code.gs) first, then try again':'Could not make the sheet: '+e.message)}};
 $('rtCopy').onclick=async()=>{const d=retData();
   const m=[`🧾 *FUND RETIREMENT* — ${d.pr.label}`,`*Trips:* ${d.lines.length}${d.km?' · '+Math.round(d.km).toLocaleString('en-NG')+' km':''}`,
     `*Received:* ${N(d.got)||'₦0'}`,`*Spent:* ${N(d.spent)||'₦0'}`,`*${d.bal<0?'Over-spent':'Balance'}:* ${N(Math.abs(d.bal))||'₦0'}`].join('\n');
